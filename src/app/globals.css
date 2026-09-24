@@ -1,26 +1,72 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --verde: #155547;
+  --verde-profundo: #0c332e;
+  --verde-oscuro: #081f1c;
+  --verde-medio: #1a6b62;
+  --salvia: #c5d4c8;
+  --salvia-clara: #e7eee9;
+  --crema: #f6f3ed;
+  --papel: #fbfaf7;
+  --tinta: #2a2a2a;
+  --muted: #5c5854;
+  --linea: rgba(21, 85, 71, 0.18);
+  --header-offset: 5.25rem;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-verde: var(--verde);
+  --color-verde-profundo: var(--verde-profundo);
+  --color-verde-oscuro: var(--verde-oscuro);
+  --color-verde-medio: var(--verde-medio);
+  --color-salvia: var(--salvia);
+  --color-salvia-clara: var(--salvia-clara);
+  --color-crema: var(--crema);
+  --color-papel: var(--papel);
+  --color-tinta: var(--tinta);
+  --color-muted: var(--muted);
+  --color-linea: var(--linea);
+  --font-sans: var(--font-sans);
+  --font-serif: var(--font-serif);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: var(--header-offset);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--crema);
+  color: var(--tinta);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --header-offset: 6.25rem;
+  }
+}
+
+::selection {
+  background: var(--salvia);
+  color: var(--verde-profundo);
+}
+
+.select-menu-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(21, 85, 71, 0.35) transparent;
+}
+
+.select-menu-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.select-menu-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.select-menu-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(21, 85, 71, 0.35);
 }
