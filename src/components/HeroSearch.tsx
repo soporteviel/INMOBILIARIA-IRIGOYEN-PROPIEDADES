@@ -4,7 +4,6 @@ import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   FilterSelect,
-  OperationTab,
   locationLabel,
   typeLabel,
 } from "@/components/FilterControls";
@@ -55,26 +54,26 @@ export function HeroSearch() {
     >
       {options.operations.length > 1 ? (
         <div
-          className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-linea pb-2.5"
+          className="mb-3 grid grid-cols-3 border-b border-linea pb-2 sm:flex sm:w-fit sm:flex-wrap sm:items-center sm:gap-x-4 sm:pb-2.5"
           role="radiogroup"
           aria-label="Operación"
         >
-          <OperationTab
+          <OperationChoice
             selected={operacion === ""}
             onSelect={() => setOperacion("")}
           >
             Todas
-          </OperationTab>
+          </OperationChoice>
           {options.operations.map((option) => (
-            <OperationTab
+            <OperationChoice
               key={option}
               selected={operacion === option}
               onSelect={() => setOperacion(option)}
             >
               {option}
-            </OperationTab>
+            </OperationChoice>
           ))}
-          <input type="hidden" name="operacion" value={operacion} />
+          <input className="hidden" type="hidden" name="operacion" value={operacion} />
         </div>
       ) : options.operations.length === 1 ? (
         <input type="hidden" name="operacion" value={options.operations[0]} />
@@ -117,5 +116,35 @@ export function HeroSearch() {
         </button>
       </div>
     </form>
+  );
+}
+
+function OperationChoice({
+  selected,
+  onSelect,
+  children,
+}: {
+  selected: boolean;
+  onSelect: () => void;
+  children: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onSelect}
+      className="group w-full cursor-pointer py-1 text-center text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-verde sm:w-auto sm:text-left"
+    >
+      <span
+        className={`inline-block border-b-2 pb-0.5 transition-colors ${
+          selected
+            ? "border-verde font-medium text-verde"
+            : "border-transparent text-muted group-hover:border-verde group-hover:text-tinta"
+        }`}
+      >
+        {children}
+      </span>
+    </button>
   );
 }

@@ -16,6 +16,12 @@ export const site = {
     width: 1254,
     height: 1254,
   },
+  logoOnDark: {
+    src: "/brand/logo-claro.png",
+    alt: "Noelia Irigoyen Propiedades",
+    width: 1254,
+    height: 1254,
+  },
   nav: [
     { label: "Inicio", href: "/#inicio" },
     { label: "Propiedades", href: "/propiedades" },

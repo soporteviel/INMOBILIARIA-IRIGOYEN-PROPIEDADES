@@ -1,3 +1,5 @@
+@layer theme, base, antd, components, utilities;
+
 @import "tailwindcss";
 
 :root {
@@ -12,7 +14,7 @@
   --tinta: #2a2a2a;
   --muted: #5c5854;
   --linea: rgba(21, 85, 71, 0.18);
-  --header-offset: 5.25rem;
+  --header-offset: 6.625rem;
 }
 
 @theme inline {
@@ -44,7 +46,7 @@ body {
 
 @media (min-width: 640px) {
   :root {
-    --header-offset: 6.25rem;
+    --header-offset: 7.625rem;
   }
 }
 

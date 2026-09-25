@@ -95,14 +95,20 @@ export function FilterSelect({
       options.findIndex((option) => option === value),
     ),
   );
+  const selectionKey = open ? `${value}\n${options.join("\n")}` : "";
+  const [trackedSelection, setTrackedSelection] = useState(selectionKey);
+  if (selectionKey !== trackedSelection) {
+    setTrackedSelection(selectionKey);
+    if (open) {
+      const selectedIndex = options.findIndex((option) => option === value);
+      setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0);
+    }
+  }
 
   useEffect(() => {
     if (!open) {
       return;
     }
-
-    const selectedIndex = options.findIndex((option) => option === value);
-    setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0);
 
     function onPointerDown(event: PointerEvent) {
       if (!rootRef.current?.contains(event.target as Node)) {
@@ -112,7 +118,7 @@ export function FilterSelect({
 
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [open, onClose, options, value]);
+  }, [open, onClose]);
 
   useEffect(() => {
     if (!open) {

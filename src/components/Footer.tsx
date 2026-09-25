@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { isConfigured, site, whatsappLink } from "@/config/site";
 import { Container } from "@/components/ui";
 
@@ -12,7 +13,7 @@ export function Footer() {
     <footer className="border-t border-linea bg-white text-tinta">
       <Container className="py-12 sm:py-16">
         <div className="grid gap-10 md:grid-cols-[auto_1fr_1fr] md:items-start">
-          <a href="/" className="justify-self-start">
+          <Link href="/" className="justify-self-start">
             <Image
               src={site.logo.src}
               alt={site.logo.alt}
@@ -20,7 +21,7 @@ export function Footer() {
               height={site.logo.height}
               className="h-24 w-24 object-contain"
             />
-          </a>
+          </Link>
 
           <nav aria-label="Pie de página">
             <p className="mb-4 text-xs uppercase tracking-[0.18em] text-verde">

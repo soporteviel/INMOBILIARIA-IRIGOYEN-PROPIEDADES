@@ -263,15 +263,6 @@ export function ValuationForm() {
               value={values.notes}
               onChange={(value) => update("notes", value)}
             />
-            <label className="flex cursor-pointer items-start gap-2.5 text-sm leading-snug text-tinta">
-              <input
-                type="checkbox"
-                checked={values.sendCopy}
-                className="mt-0.5 h-4 w-4 accent-verde"
-                onChange={(event) => update("sendCopy", event.target.checked)}
-              />
-              Recibir una copia de esta consulta por mail
-            </label>
             <button
               type="submit"
               className="inline-flex min-h-10 w-full items-center justify-center bg-verde px-5 text-sm font-medium tracking-wide text-papel transition-colors hover:bg-verde-medio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-verde-profundo"

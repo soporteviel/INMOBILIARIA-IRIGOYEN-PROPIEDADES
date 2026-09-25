@@ -8,7 +8,7 @@ import { Container } from "@/components/ui";
 const POSTER = "/videos/hero-poster.jpg";
 const VIDEO_SRC = "/videos/hero.mp4";
 
-export function Hero() {
+export function Hero({ underHeader = false }: { underHeader?: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [allowVideo, setAllowVideo] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -99,15 +99,26 @@ export function Hero() {
         ) : null}
 
         <div className="absolute inset-0 bg-verde-oscuro/45" />
+        {underHeader ? (
+          <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-verde-oscuro/60 via-verde-oscuro/20 to-transparent sm:h-44" />
+        ) : null}
       </div>
 
-      <Container className="relative z-10 flex flex-col items-center justify-center px-5 py-14 sm:py-16 lg:min-h-[calc(100svh-var(--header-offset))] lg:py-12">
-        <div className="flex w-full max-w-4xl flex-col items-center gap-6">
+      <Container
+        className={
+          underHeader
+            ? "relative z-10 flex flex-col items-center justify-center px-5 pt-[calc(var(--header-offset)+2rem)] pb-14 sm:pt-[calc(var(--header-offset)+2.5rem)] sm:pb-16 lg:min-h-svh lg:pt-[calc(var(--header-offset)+1.75rem)] lg:pb-12"
+            : "relative z-10 flex flex-col items-center justify-center px-5 py-10 sm:py-12 lg:min-h-[calc(100svh-var(--header-offset))] lg:py-10"
+        }
+      >
+        <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-5">
           <h1 className="max-w-xl text-center font-serif text-[1.75rem] font-semibold leading-snug text-papel lg:text-[2.5rem] lg:leading-[1.2]">
             Encontrá tu próxima propiedad
           </h1>
 
-          <HeroSearch />
+          <div className="flex w-full justify-center">
+            <HeroSearch />
+          </div>
         </div>
       </Container>
 
