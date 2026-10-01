@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { imageContentType } from "@/lib/photos/kind";
 import { readObject, r2ConfigError } from "@/lib/r2/client";
 import { createPublicClient } from "@/lib/supabase/public";
 
@@ -22,9 +23,10 @@ export async function GET(_request: Request, context: RouteContext) {
 
   const { data, error } = await supabase
     .from("property_photos")
-    .select("object_key")
+    .select("object_key, properties!inner(status)")
     .eq("id", photoId)
     .eq("status", "ready")
+    .eq("properties.status", "PUBLICADA")
     .maybeSingle();
 
   if (error || !data || typeof data.object_key !== "string" || !data.object_key) {
@@ -37,10 +39,14 @@ export async function GET(_request: Request, context: RouteContext) {
 
   try {
     const object = await readObject(data.object_key);
+    const contentType = imageContentType(object.bytes);
+    if (!contentType) {
+      return new NextResponse(null, { status: 404 });
+    }
     return new NextResponse(new Uint8Array(object.bytes), {
       status: 200,
       headers: {
-        "Content-Type": "image/webp",
+        "Content-Type": contentType,
         "Cache-Control": "private, max-age=60",
         "X-Content-Type-Options": "nosniff",
       },

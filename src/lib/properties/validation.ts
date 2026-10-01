@@ -185,15 +185,6 @@ export function normalizeProperty(
     delete errors.bedrooms;
   }
 
-  if (
-    coveredAreaM2 !== null &&
-    totalAreaM2 !== null &&
-    coveredAreaM2 > totalAreaM2 &&
-    !typeIsLand(propertyType)
-  ) {
-    errors.coveredAreaM2 = "La superficie cubierta no puede ser mayor que la total.";
-  }
-
   const features: string[] = [];
   for (const feature of Array.isArray(input.features) ? input.features : []) {
     if (typeof feature !== "string") {

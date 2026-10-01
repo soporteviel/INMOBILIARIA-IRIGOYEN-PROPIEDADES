@@ -1,12 +1,11 @@
 "use client";
 
-import Image from "next/image";
+import Image, { getImageProps } from "next/image";
 import {
   useEffect,
   useId,
   useRef,
   useState,
-  useSyncExternalStore,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import type { PropertyPhoto } from "@/data/properties";
@@ -53,14 +52,50 @@ function gridClass(total: number) {
   return "grid-cols-4 grid-rows-2";
 }
 
-function subscribeDesktop(onStoreChange: () => void) {
-  const media = window.matchMedia("(min-width: 1024px)");
-  media.addEventListener("change", onStoreChange);
-  return () => media.removeEventListener("change", onStoreChange);
+const MOBILE_SIZES = "(min-width: 640px) calc(100vw - 4rem), calc(100vw - 2.5rem)";
+const LIGHTBOX_SIZES = "100vw";
+const THUMB_SIZES = "96px";
+
+function desktopSlot(fraction: "full" | "half" | "quarter") {
+  if (fraction === "full") {
+    return "(min-width: 1024px) min(72rem, 100vw), 100vw";
+  }
+  if (fraction === "half") {
+    return "(min-width: 1024px) min(36rem, 50vw), 50vw";
+  }
+  return "(min-width: 1024px) min(18rem, 25vw), 25vw";
 }
 
-function isDesktopLayout() {
-  return window.matchMedia("(min-width: 1024px)").matches;
+function gridSizes(total: number, index: number) {
+  if (total <= 1) {
+    return desktopSlot("full");
+  }
+  if (total >= 5) {
+    return desktopSlot(index === 0 ? "half" : "quarter");
+  }
+  return desktopSlot("half");
+}
+
+function OptimizedPreload({
+  src,
+  sizes,
+  media,
+}: {
+  src: string;
+  sizes: string;
+  media?: string;
+}) {
+  const { props } = getImageProps({ alt: "", src, fill: true, sizes });
+  return (
+    <link
+      rel="preload"
+      as="image"
+      media={media}
+      imageSrcSet={props.srcSet}
+      imageSizes={props.sizes}
+      href={props.srcSet ? undefined : props.src}
+    />
+  );
 }
 
 export function PropertyGallery({ photos, emptyLabel = "Sin fotos" }: PropertyGalleryProps) {
@@ -84,7 +119,6 @@ function PropertyGalleryView({ photos }: { photos: PropertyPhoto[] }) {
   const ignoreStripScroll = useRef(false);
   const suppressSlideClick = useRef(false);
   const titleId = useId();
-  const isDesktop = useSyncExternalStore(subscribeDesktop, isDesktopLayout, () => false);
   const total = photos.length;
   const visible = photos.slice(0, total >= 5 ? 5 : total);
   const showAll = total > visible.length;
@@ -271,9 +305,17 @@ function PropertyGalleryView({ photos }: { photos: PropertyPhoto[] }) {
   }
 
   const current = photos[index] ?? photos[0];
+  const nextPhoto = total > 1 ? photos[(index + 1) % total] : null;
+  const first = photos[0];
 
   return (
     <>
+      {first ? (
+        <>
+          <OptimizedPreload src={first.src} sizes={gridSizes(visible.length, 0)} media="(min-width: 1024px)" />
+          <OptimizedPreload src={first.src} sizes={MOBILE_SIZES} media="(max-width: 1023px)" />
+        </>
+      ) : null}
       <div className={`hidden h-[clamp(420px,42vw,520px)] gap-2 lg:grid ${gridClass(visible.length)}`}>
         {visible.map((photo, photoIndex) => {
           const isLast = photoIndex === visible.length - 1;
@@ -292,9 +334,8 @@ function PropertyGalleryView({ photos }: { photos: PropertyPhoto[] }) {
                   src={photo.src}
                   alt={photo.alt}
                   fill
-                  priority={isDesktop && photoIndex === 0}
-                  loading={isDesktop && photoIndex === 0 ? undefined : "lazy"}
-                  sizes={photoIndex === 0 ? "(min-width: 1024px) 60vw, 100vw" : "20vw"}
+                  loading="lazy"
+                  sizes={gridSizes(visible.length, photoIndex)}
                   className="object-cover"
                 />
               </button>
@@ -333,9 +374,8 @@ function PropertyGalleryView({ photos }: { photos: PropertyPhoto[] }) {
                   src={photo.src}
                   alt={photo.alt}
                   fill
-                  priority={!isDesktop && photoIndex === 0}
-                  loading={!isDesktop && photoIndex === 0 ? undefined : "lazy"}
-                  sizes="100vw"
+                  loading="lazy"
+                  sizes={MOBILE_SIZES}
                   className="object-cover"
                 />
               </button>
@@ -397,11 +437,12 @@ function PropertyGalleryView({ photos }: { photos: PropertyPhoto[] }) {
             onPointerDown={onLightboxPointerDown}
             onPointerUp={onLightboxPointerUp}
           >
+            {nextPhoto ? <OptimizedPreload src={nextPhoto.src} sizes={LIGHTBOX_SIZES} /> : null}
             <Image
               src={current.src}
               alt={current.alt}
               fill
-              sizes="100vw"
+              sizes={LIGHTBOX_SIZES}
               className="object-contain"
             />
             {total > 1 ? (
@@ -449,7 +490,7 @@ function PropertyGalleryView({ photos }: { photos: PropertyPhoto[] }) {
                       alt=""
                       fill
                       loading="lazy"
-                      sizes="96px"
+                      sizes={THUMB_SIZES}
                       className="object-cover"
                     />
                   </button>

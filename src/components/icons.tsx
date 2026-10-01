@@ -74,22 +74,6 @@ export function IconChevron({ open = false }: { open?: boolean }) {
   );
 }
 
-export function IconPlay({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 16 16" className={className} fill="currentColor" aria-hidden="true">
-      <path d="M4.5 2.8v10.4L13.2 8 4.5 2.8z" />
-    </svg>
-  );
-}
-
-export function IconPause({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 16 16" className={className} fill="currentColor" aria-hidden="true">
-      <path d="M4 3h3v10H4V3zm5 0h3v10H9V3z" />
-    </svg>
-  );
-}
-
 export function IconWhatsApp({ className = "h-5 w-5" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">

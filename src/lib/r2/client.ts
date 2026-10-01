@@ -1,6 +1,6 @@
 import "server-only";
 
-import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { UPLOAD_URL_SECONDS, VIEW_URL_SECONDS, type AcceptedPhotoType } from "@/lib/photos/limits";
 
@@ -95,12 +95,6 @@ export async function readObject(key: string) {
   if (!config) {
     throw new Error(r2ConfigError() ?? "Falta configurar R2.");
   }
-  const head = await r2Client(config).send(
-    new HeadObjectCommand({
-      Bucket: config.bucket,
-      Key: key,
-    }),
-  );
   const response = await r2Client(config).send(
     new GetObjectCommand({
       Bucket: config.bucket,
@@ -111,7 +105,10 @@ export async function readObject(key: string) {
     throw new Error("El archivo subido está vacío.");
   }
   const bytes = Buffer.from(await response.Body.transformToByteArray());
-  return { bytes, contentLength: head.ContentLength ?? bytes.byteLength };
+  if (bytes.byteLength === 0) {
+    throw new Error("El archivo subido está vacío.");
+  }
+  return { bytes, contentLength: response.ContentLength ?? bytes.byteLength };
 }
 
 export async function writeObject(key: string, bytes: Buffer, contentType: string) {

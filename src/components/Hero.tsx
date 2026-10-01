@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { HeroSearch } from "@/components/HeroSearch";
 import type { PropertyFilterOptions } from "@/data/properties";
-import { IconPause, IconPlay } from "@/components/icons";
 import { Container } from "@/components/ui";
 
 const POSTER = "/videos/hero-poster.jpg";
@@ -18,7 +17,6 @@ export function Hero({
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [allowVideo, setAllowVideo] = useState(false);
-  const [playing, setPlaying] = useState(false);
   const [playbackFailed, setPlaybackFailed] = useState(false);
 
   useEffect(() => {
@@ -26,9 +24,6 @@ export function Hero({
 
     function syncPreference() {
       setAllowVideo(!media.matches);
-      if (media.matches) {
-        setPlaying(false);
-      }
     }
 
     syncPreference();
@@ -44,35 +39,11 @@ export function Hero({
 
     const playPromise = video.play();
     if (playPromise) {
-      playPromise
-        .then(() => setPlaying(true))
-        .catch(() => {
-          setPlaybackFailed(true);
-          setPlaying(false);
-        });
+      playPromise.catch(() => {
+        setPlaybackFailed(true);
+      });
     }
   }, [allowVideo, playbackFailed]);
-
-  async function togglePlayback() {
-    const video = videoRef.current;
-    if (!video || playbackFailed) {
-      return;
-    }
-
-    if (video.paused) {
-      try {
-        await video.play();
-        setPlaying(true);
-      } catch {
-        setPlaybackFailed(true);
-        setPlaying(false);
-      }
-      return;
-    }
-
-    video.pause();
-    setPlaying(false);
-  }
 
   return (
     <section
@@ -94,11 +65,8 @@ export function Hero({
             loop
             playsInline
             preload="metadata"
-            onPlaying={() => setPlaying(true)}
-            onPause={() => setPlaying(false)}
             onError={() => {
               setPlaybackFailed(true);
-              setPlaying(false);
             }}
           >
             <source src={VIDEO_SRC} type="video/mp4" />
@@ -128,17 +96,6 @@ export function Hero({
           </div>
         </div>
       </Container>
-
-      {allowVideo && !playbackFailed ? (
-        <button
-          type="button"
-          onClick={togglePlayback}
-          className="absolute right-4 bottom-4 z-20 inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-white/30 bg-verde-oscuro/55 text-papel transition-colors hover:bg-verde-oscuro/75 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-papel sm:right-6 sm:bottom-6"
-          aria-label={playing ? "Pausar video de fondo" : "Reanudar video de fondo"}
-        >
-          {playing ? <IconPause /> : <IconPlay />}
-        </button>
-      ) : null}
     </section>
   );
 }

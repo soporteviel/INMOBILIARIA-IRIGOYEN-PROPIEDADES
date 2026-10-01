@@ -31,6 +31,20 @@ export function detectImageKind(bytes: Uint8Array): ImageKind {
   return "unknown";
 }
 
+export function imageContentType(bytes: Uint8Array) {
+  const kind = detectImageKind(bytes);
+  if (kind === "jpeg") {
+    return "image/jpeg";
+  }
+  if (kind === "png") {
+    return "image/png";
+  }
+  if (kind === "webp") {
+    return "image/webp";
+  }
+  return null;
+}
+
 function ascii(bytes: Uint8Array, start: number, end: number) {
   return String.fromCharCode(...bytes.slice(start, end));
 }
