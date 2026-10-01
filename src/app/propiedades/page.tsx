@@ -7,12 +7,13 @@ import { PropertyCard } from "@/components/PropertyCard";
 import { PropertyFilters } from "@/components/PropertyFilters";
 import { Container } from "@/components/ui";
 import { site } from "@/config/site";
-import { getPublishedProperties } from "@/data/properties";
+import { getPropertyFilterOptions } from "@/data/properties";
 import {
   filterProperties,
   hasActivePropertySearch,
   parsePropertySearch,
 } from "@/data/property-search";
+import { getPublishedCatalog } from "@/lib/properties/public-catalog";
 
 export const metadata: Metadata = {
   title: `Propiedades | ${site.name}`,
@@ -24,10 +25,15 @@ type PropiedadesPageProps = {
 };
 
 export default async function PropiedadesPage({ searchParams }: PropiedadesPageProps) {
-  const search = parsePropertySearch(await searchParams);
-  const results = filterProperties(getPublishedProperties(), search);
-  const countLabel =
-    results.length === 1 ? "1 propiedad" : `${results.length} propiedades`;
+  const catalog = await getPublishedCatalog();
+  const options = catalog.ok ? getPropertyFilterOptions(catalog.properties) : getPropertyFilterOptions([]);
+  const searchCatalog = {
+    locations: options.locations.filter((item) => item !== "Todas"),
+    types: options.types.filter((item) => item !== "Todos"),
+  };
+  const search = parsePropertySearch(await searchParams, searchCatalog);
+  const results = catalog.ok ? filterProperties(catalog.properties, search) : [];
+  const countLabel = results.length === 1 ? "1 propiedad" : `${results.length} propiedades`;
 
   return (
     <>
@@ -39,35 +45,50 @@ export default async function PropiedadesPage({ searchParams }: PropiedadesPageP
               <h1 className="font-serif text-3xl font-semibold leading-tight text-verde-profundo sm:text-[2.15rem]">
                 Propiedades
               </h1>
-              <p className="text-sm text-muted">{countLabel}</p>
+              {catalog.ok ? <p className="text-sm text-muted">{countLabel}</p> : null}
             </div>
 
-            <div className="mt-6">
-              <Suspense fallback={null}>
-                <PropertyFilters />
-              </Suspense>
-            </div>
-
-            {results.length > 0 ? (
-              <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {results.map((property) => (
-                  <PropertyCard key={property.id} property={property} />
-                ))}
+            {catalog.ok ? (
+              <div className="mt-6">
+                <Suspense fallback={null}>
+                  <PropertyFilters options={options} />
+                </Suspense>
               </div>
+            ) : null}
+
+            {!catalog.ok ? (
+              <p className="mt-10 text-base text-tinta">{catalog.message}</p>
             ) : (
-              <div className="mt-10">
-                <p className="text-base text-tinta">
-                  No hay propiedades que coincidan con la búsqueda.
-                </p>
-                {hasActivePropertySearch(search) ? (
-                  <Link
-                    href="/propiedades"
-                    className="mt-4 inline-flex text-sm text-verde transition-colors hover:text-verde-medio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-verde"
-                  >
-                    Limpiar filtros
-                  </Link>
+              <>
+                {catalog.photosUnavailable ? (
+                  <p className="mt-6 text-base text-tinta">
+                    No pudimos cargar las fotos. Las fichas siguen disponibles.
+                  </p>
                 ) : null}
-              </div>
+                {results.length > 0 ? (
+                  <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {results.map((property) => (
+                      <PropertyCard key={property.id} property={property} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-10">
+                    <p className="text-base text-tinta">
+                      {hasActivePropertySearch(search)
+                        ? "No hay propiedades que coincidan con la búsqueda."
+                        : "Todavía no hay propiedades publicadas."}
+                    </p>
+                    {hasActivePropertySearch(search) ? (
+                      <Link
+                        href="/propiedades"
+                        className="mt-4 inline-flex text-sm text-verde transition-colors hover:text-verde-medio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-verde"
+                      >
+                        Limpiar filtros
+                      </Link>
+                    ) : null}
+                  </div>
+                )}
+              </>
             )}
           </Container>
         </section>

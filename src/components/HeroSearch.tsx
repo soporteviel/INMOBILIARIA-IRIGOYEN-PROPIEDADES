@@ -7,12 +7,18 @@ import {
   locationLabel,
   typeLabel,
 } from "@/components/FilterControls";
-import { getPropertyFilterOptions } from "@/data/properties";
+import { type PropertyFilterOptions } from "@/data/properties";
 import { searchFromControls, toPropertySearchQuery } from "@/data/property-search";
 
-export function HeroSearch() {
+export function HeroSearch({ options }: { options: PropertyFilterOptions }) {
   const router = useRouter();
-  const options = useMemo(() => getPropertyFilterOptions(), []);
+  const catalog = useMemo(
+    () => ({
+      locations: options.locations.filter((item) => item !== "Todas"),
+      types: options.types.filter((item) => item !== "Todos"),
+    }),
+    [options],
+  );
 
   const [openSelect, setOpenSelect] = useState<string | null>(null);
   const [operacion, setOperacion] = useState("");
@@ -41,7 +47,7 @@ export function HeroSearch() {
         superficieDesde: "",
         superficieHasta: "",
         cochera: "Todas",
-      }),
+      }, catalog),
     );
     router.push(query ? `/propiedades?${query}` : "/propiedades");
   }

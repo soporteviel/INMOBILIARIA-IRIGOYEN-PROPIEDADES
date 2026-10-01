@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { PasswordForm } from "@/app/admin/nueva-contrasena/PasswordForm";
 import { AdminFrame } from "@/components/admin/AdminFrame";
-import { getAuthState } from "@/lib/auth/session";
+import { adminEntryPath, getAuthState } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +12,9 @@ export default async function NewPasswordPage() {
   }
   if (auth.status === "anonymous") {
     redirect("/admin/login");
+  }
+  if (!auth.isAdmin) {
+    redirect(adminEntryPath(auth));
   }
 
   return (

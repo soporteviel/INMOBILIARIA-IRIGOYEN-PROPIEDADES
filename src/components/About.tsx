@@ -28,9 +28,21 @@ export function About() {
             </p>
             <div className="mt-6 space-y-4">
               <p className="text-base leading-relaxed text-tinta/90 sm:text-lg">
-                {site.name} acompaña a quienes buscan comprar, vender o alquilar
-                una propiedad, con una atención cercana y clara en cada
-                consulta.
+                Noelia Irigoyen Propiedades brinda un servicio inmobiliario
+                profesional y personalizado, orientado a acompañar a sus
+                clientes en cada etapa de los procesos de compra, venta y
+                alquiler.
+              </p>
+              <p className="text-base leading-relaxed text-tinta/90 sm:text-lg">
+                Con un enfoque basado en la confianza, la transparencia y el
+                conocimiento del mercado, trabaja para que cada operación se
+                desarrolle de manera clara, segura y eficiente.
+              </p>
+              <p className="text-base leading-relaxed text-tinta/90 sm:text-lg">
+                El compromiso es ofrecer un servicio de calidad, con atención
+                personalizada y asesoramiento profesional, buscando generar
+                relaciones duraderas y acompañar a cada cliente en la
+                concreción de sus objetivos inmobiliarios.
               </p>
               <p className="text-sm text-muted">{site.license}</p>
             </div>

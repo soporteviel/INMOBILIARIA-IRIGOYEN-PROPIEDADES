@@ -8,6 +8,10 @@ export const valuationPropertyTypes = [
   { value: "departamento", label: "Departamento" },
   { value: "ph", label: "PH" },
   { value: "local", label: "Local" },
+  { value: "oficina", label: "Oficina" },
+  { value: "cochera", label: "Cochera" },
+  { value: "lote", label: "Lote" },
+  { value: "terreno", label: "Terreno" },
 ] as const;
 
 export const valuationRooms = [
@@ -56,6 +60,13 @@ export const emptyValuationForm: ValuationFormValues = {
   sendCopy: false,
 };
 
+function optionLabel(
+  options: readonly { value: string; label: string }[],
+  value: string,
+) {
+  return options.find((option) => option.value === value)?.label ?? value;
+}
+
 export function formatValuationMessage(values: ValuationFormValues) {
   const line = (label: string, value: string) =>
     `${label}: ${value.trim() || "—"}`;
@@ -71,19 +82,18 @@ export function formatValuationMessage(values: ValuationFormValues) {
     line("Dirección", values.address),
     "",
     "Datos del inmueble",
-    line("Operación", values.operation),
-    line("Tipo de propiedad", values.propertyType),
+    line("Operación", optionLabel(valuationOperations, values.operation)),
+    line(
+      "Tipo de propiedad",
+      optionLabel(valuationPropertyTypes, values.propertyType),
+    ),
     line("Ambientes", values.rooms),
     line("Sup. cubierta", values.coveredArea ? `${values.coveredArea} m²` : ""),
     line("Sup. total", values.totalArea ? `${values.totalArea} m²` : ""),
-    line("Garage", values.garage),
+    line("Garage", optionLabel(valuationGarage, values.garage)),
     "",
     "Adicionales",
     line("Amenities", values.amenities),
     line("Observaciones", values.notes),
-    "",
-    values.sendCopy
-      ? "Pidió recibir una copia de esta consulta por mail."
-      : "No pidió copia por mail.",
   ].join("\n");
 }

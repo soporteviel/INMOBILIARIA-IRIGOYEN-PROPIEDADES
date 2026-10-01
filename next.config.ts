@@ -7,6 +7,11 @@ const privateAdminHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["sharp"],
+  images: {
+    // El optimizador no conserva una foto pausada más que este lapso.
+    minimumCacheTTL: 60,
+  },
   async headers() {
     return [
       { source: "/admin", headers: privateAdminHeaders },

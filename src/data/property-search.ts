@@ -1,9 +1,4 @@
-import {
-  detectCurrency,
-  getPublishedProperties,
-  propertyUsesBedrooms,
-  type Property,
-} from "@/data/properties";
+import { propertyUsesBedrooms, type Property, type PropertyCurrency } from "@/data/properties";
 
 export const PROPERTY_SEARCH_KEYS = {
   operation: "operacion",
@@ -21,7 +16,7 @@ export const PROPERTY_SEARCH_KEYS = {
 const BEDROOM_OPTIONS = ["1", "2", "3", "4+"] as const;
 const GARAGE_OPTIONS = ["Sí", "No"] as const;
 
-export type PropertyCurrency = "USD" | "ARS";
+export type { PropertyCurrency };
 export type BedroomFilter = (typeof BEDROOM_OPTIONS)[number];
 export type GarageFilter = (typeof GARAGE_OPTIONS)[number];
 
@@ -92,32 +87,28 @@ function orderedRange(min: number | null, max: number | null) {
   return { min, max };
 }
 
-export function priceAmount(price: string) {
-  if (!detectCurrency(price)) {
-    return null;
-  }
-  const digits = price.replace(/\D/g, "");
-  if (!digits) {
-    return null;
-  }
-  const amount = Number(digits);
-  if (!Number.isSafeInteger(amount) || amount <= 0) {
-    return null;
-  }
-  return amount;
-}
-
 function comparableSurface(property: Property) {
-  if (property.type === "Lote") {
+  if (property.type === "Lote" || property.type === "Terreno") {
     return property.landAreaM2;
   }
   return property.coveredAreaM2;
 }
 
-export function parsePropertySearch(input: SearchInput): PropertySearch {
-  const catalog = getPublishedProperties();
-  const locations = new Set(catalog.map((property) => property.location));
-  const types = new Set(catalog.map((property) => property.type));
+function comparablePrice(property: Property) {
+  if (property.priceOnRequest || property.price === null || !property.currency) {
+    return null;
+  }
+  return { currency: property.currency, amount: property.price };
+}
+
+export type SearchCatalog = {
+  locations: readonly string[];
+  types: readonly string[];
+};
+
+export function parsePropertySearch(input: SearchInput, catalog: SearchCatalog): PropertySearch {
+  const locations = new Set(catalog.locations);
+  const types = new Set(catalog.types);
 
   const operationValue = readParam(input, PROPERTY_SEARCH_KEYS.operation);
   const operation = OPERATIONS.has(operationValue as Property["operation"])
@@ -194,7 +185,7 @@ export function controlsFromSearch(
   };
 }
 
-export function searchFromControls(controls: PropertyFilterControls) {
+export function searchFromControls(controls: PropertyFilterControls, catalog: SearchCatalog) {
   const params = new URLSearchParams();
   if (controls.operacion) {
     params.set(PROPERTY_SEARCH_KEYS.operation, controls.operacion);
@@ -233,7 +224,7 @@ export function searchFromControls(controls: PropertyFilterControls) {
   ) {
     params.set(PROPERTY_SEARCH_KEYS.currency, controls.moneda);
   }
-  return parsePropertySearch(params);
+  return parsePropertySearch(params, catalog);
 }
 
 export function toPropertySearchQuery(search: PropertySearch) {
@@ -292,22 +283,22 @@ export function filterProperties(properties: Property[], search: PropertySearch)
       return false;
     }
     if (search.bedrooms) {
-      if (!propertyUsesBedrooms(property.type)) {
+      if (!propertyUsesBedrooms(property.type) || property.bedrooms === null) {
         return false;
       }
       if (!matchesBedrooms(property.bedrooms, search.bedrooms)) {
         return false;
       }
     }
-    if (search.garage === "Sí" && !(property.garage && property.garage > 0)) {
+    if (search.garage === "Sí" && !(property.garage !== null && property.garage > 0)) {
       return false;
     }
-    if (search.garage === "No" && property.garage && property.garage > 0) {
+    if (search.garage === "No" && property.garage !== 0) {
       return false;
     }
     if (search.surfaceMin !== null || search.surfaceMax !== null) {
       const surface = comparableSurface(property);
-      if (surface === undefined) {
+      if (surface === null) {
         return false;
       }
       if (search.surfaceMin !== null && surface < search.surfaceMin) {
@@ -318,8 +309,9 @@ export function filterProperties(properties: Property[], search: PropertySearch)
       }
     }
 
-    const currency = detectCurrency(property.price);
-    const amount = priceAmount(property.price);
+    const price = comparablePrice(property);
+    const currency = price?.currency ?? null;
+    const amount = price?.amount ?? null;
     if (priceActive) {
       if (!search.currency || currency !== search.currency || amount === null) {
         return false;

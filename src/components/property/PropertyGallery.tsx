@@ -13,7 +13,16 @@ import type { PropertyPhoto } from "@/data/properties";
 
 type PropertyGalleryProps = {
   photos: PropertyPhoto[];
+  emptyLabel?: string;
 };
+
+function EmptyGallery({ label }: { label: string }) {
+  return (
+    <div className="flex h-[clamp(280px,42vw,520px)] items-center justify-center border border-linea bg-salvia-clara">
+      <p className="text-sm text-muted">{label}</p>
+    </div>
+  );
+}
 
 function cellClass(total: number, index: number) {
   if (total === 3 && index === 0) {
@@ -54,7 +63,14 @@ function isDesktopLayout() {
   return window.matchMedia("(min-width: 1024px)").matches;
 }
 
-export function PropertyGallery({ photos }: PropertyGalleryProps) {
+export function PropertyGallery({ photos, emptyLabel = "Sin fotos" }: PropertyGalleryProps) {
+  if (photos.length === 0) {
+    return <EmptyGallery label={emptyLabel} />;
+  }
+  return <PropertyGalleryView photos={photos} />;
+}
+
+function PropertyGalleryView({ photos }: { photos: PropertyPhoto[] }) {
   const [index, setIndex] = useState(0);
   const [open, setOpen] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);

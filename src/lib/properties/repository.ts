@@ -12,6 +12,7 @@ import {
   type PropertyStatus,
   type PropertyType,
 } from "@/lib/properties/model";
+import { canonicalLocationNames, resolveLocationName } from "@/lib/properties/locations";
 import { normalizeProperty, type NormalizedProperty } from "@/lib/properties/validation";
 
 const PROPERTY_COLUMNS =
@@ -155,7 +156,12 @@ async function adminDb() {
   return { ok: true as const, supabase };
 }
 
-export async function listProperties(filters: { query: string; status: PropertyStatus | null }) {
+export async function listProperties(filters: {
+  query: string;
+  status: PropertyStatus | null;
+  propertyType: PropertyType | null;
+  operation: PropertyOperation | null;
+}) {
   const db = await adminDb();
   if (!db.ok) {
     return db.error;
@@ -169,6 +175,12 @@ export async function listProperties(filters: { query: string; status: PropertyS
 
   if (filters.status) {
     request = request.eq("status", filters.status);
+  }
+  if (filters.propertyType) {
+    request = request.eq("property_type", filters.propertyType);
+  }
+  if (filters.operation) {
+    request = request.eq("operation", filters.operation);
   }
   const query = filters.query.replace(/[%_,.()]/g, "").trim();
   if (query) {
@@ -201,6 +213,38 @@ export async function getProperty(id: string) {
   return { ok: true as const, property: mapRow(data as PropertyRow) };
 }
 
+async function storedLocationNames(supabase: NonNullable<Awaited<ReturnType<typeof createClient>>>) {
+  const { data, error } = await supabase.from("properties").select("location").not("location", "is", null);
+  if (error) {
+    throw error;
+  }
+  return ((data ?? []) as { location: string | null }[]).map((row) => row.location);
+}
+
+async function withCanonicalLocation(
+  supabase: NonNullable<Awaited<ReturnType<typeof createClient>>>,
+  value: NormalizedProperty,
+) {
+  if (!value.location) {
+    return value;
+  }
+  const stored = await storedLocationNames(supabase);
+  return { ...value, location: resolveLocationName(value.location, stored) };
+}
+
+export async function listAdminLocations() {
+  const db = await adminDb();
+  if (!db.ok) {
+    return db.error;
+  }
+  try {
+    const stored = await storedLocationNames(db.supabase);
+    return { ok: true as const, names: canonicalLocationNames(stored) };
+  } catch (error) {
+    return failure(error as { code?: string; message?: string }, "No se pudieron cargar las ubicaciones.");
+  }
+}
+
 async function uniqueSlug(supabase: Awaited<ReturnType<typeof createClient>>, title: string) {
   const base = slugifyTitle(title);
   if (!supabase) {
@@ -230,9 +274,15 @@ export async function insertProperty(value: NormalizedProperty, status: Property
   } catch (error) {
     return failure(error as { code?: string; message?: string }, "No se pudo preparar el identificador.");
   }
+  let canonical = value;
+  try {
+    canonical = await withCanonicalLocation(db.supabase, value);
+  } catch (error) {
+    return failure(error as { code?: string; message?: string }, "No se pudo guardar la ubicación.");
+  }
   const { data, error } = await db.supabase
     .from("properties")
-    .insert({ ...toRow(value, status), slug })
+    .insert({ ...toRow(canonical, status), slug })
     .select(PROPERTY_COLUMNS)
     .single();
   if (error) {
@@ -246,9 +296,15 @@ export async function updateProperty(id: string, value: NormalizedProperty, stat
   if (!db.ok) {
     return db.error;
   }
+  let canonical = value;
+  try {
+    canonical = await withCanonicalLocation(db.supabase, value);
+  } catch (error) {
+    return failure(error as { code?: string; message?: string }, "No se pudo guardar la propiedad.");
+  }
   const { data, error } = await db.supabase
     .from("properties")
-    .update(toRow(value, status))
+    .update(toRow(canonical, status))
     .eq("id", id)
     .select(PROPERTY_COLUMNS)
     .maybeSingle();

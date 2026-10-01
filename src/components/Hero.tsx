@@ -2,13 +2,20 @@
 
 import { useEffect, useRef, useState } from "react";
 import { HeroSearch } from "@/components/HeroSearch";
+import type { PropertyFilterOptions } from "@/data/properties";
 import { IconPause, IconPlay } from "@/components/icons";
 import { Container } from "@/components/ui";
 
 const POSTER = "/videos/hero-poster.jpg";
 const VIDEO_SRC = "/videos/hero.mp4";
 
-export function Hero({ underHeader = false }: { underHeader?: boolean }) {
+export function Hero({
+  underHeader = false,
+  searchOptions,
+}: {
+  underHeader?: boolean;
+  searchOptions: PropertyFilterOptions;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [allowVideo, setAllowVideo] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -117,7 +124,7 @@ export function Hero({ underHeader = false }: { underHeader?: boolean }) {
           </h1>
 
           <div className="flex w-full justify-center">
-            <HeroSearch />
+            <HeroSearch options={searchOptions} />
           </div>
         </div>
       </Container>

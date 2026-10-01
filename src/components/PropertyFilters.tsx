@@ -12,9 +12,9 @@ import {
 } from "@/components/FilterControls";
 import { IconChevron } from "@/components/icons";
 import {
-  getPropertyFilterOptions,
   propertyUsesBedrooms,
   surfaceLabelForType,
+  type PropertyFilterOptions,
 } from "@/data/properties";
 import {
   controlsFromSearch,
@@ -24,18 +24,24 @@ import {
   type PropertyCurrency,
 } from "@/data/property-search";
 
-export function PropertyFilters() {
+export function PropertyFilters({ options }: { options: PropertyFilterOptions }) {
   const searchParams = useSearchParams();
-  return <PropertyFiltersForm key={searchParams.toString()} />;
+  return <PropertyFiltersForm key={searchParams.toString()} options={options} />;
 }
 
-function PropertyFiltersForm() {
+function PropertyFiltersForm({ options }: { options: PropertyFilterOptions }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const options = useMemo(() => getPropertyFilterOptions(), []);
+  const catalog = useMemo(
+    () => ({
+      locations: options.locations.filter((item) => item !== "Todas"),
+      types: options.types.filter((item) => item !== "Todos"),
+    }),
+    [options],
+  );
   const fallbackCurrency = (options.currencies[0] ?? "USD") as PropertyCurrency;
   const applied = controlsFromSearch(
-    parsePropertySearch(new URLSearchParams(searchParams.toString())),
+    parsePropertySearch(new URLSearchParams(searchParams.toString()), catalog),
     fallbackCurrency,
   );
 
@@ -95,7 +101,7 @@ function PropertyFiltersForm() {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const next = toPropertySearchQuery(searchFromControls(currentControls()));
+    const next = toPropertySearchQuery(searchFromControls(currentControls(), catalog));
     router.push(next ? `/propiedades?${next}` : "/propiedades");
   }
 

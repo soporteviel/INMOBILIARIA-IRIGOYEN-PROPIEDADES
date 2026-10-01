@@ -1,4 +1,4 @@
-export const PROPERTY_TYPES = ["Casa", "Departamento", "PH", "Local", "Lote"] as const;
+export const PROPERTY_TYPES = ["Casa", "Departamento", "PH", "Local", "Oficina", "Cochera", "Lote", "Terreno"] as const;
 export const PROPERTY_OPERATIONS = ["Venta", "Alquiler", "Temporal"] as const;
 export const PROPERTY_STATUSES = ["BORRADOR", "PUBLICADA", "PAUSADA"] as const;
 export const PROPERTY_CURRENCIES = ["ARS", "USD"] as const;
@@ -85,8 +85,12 @@ export function typeUsesBedrooms(type: PropertyType | null) {
   return type !== null && TYPES_WITH_BEDROOMS.has(type);
 }
 
+export function typeIsLand(type: PropertyType | string | null) {
+  return type === "Lote" || type === "Terreno";
+}
+
 export function typeUsesInterior(type: PropertyType | null) {
-  return type !== "Lote";
+  return !typeIsLand(type);
 }
 
 export function operationUsesPeriod(operation: PropertyOperation | null) {

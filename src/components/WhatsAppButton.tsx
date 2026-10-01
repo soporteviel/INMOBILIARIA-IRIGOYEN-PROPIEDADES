@@ -1,7 +1,15 @@
+"use client";
+
 import { IconWhatsApp } from "@/components/icons";
 import { whatsappLink } from "@/config/site";
+import { usePathname } from "next/navigation";
 
 export function WhatsAppButton() {
+  const pathname = usePathname();
+  if (pathname.startsWith("/admin")) {
+    return null;
+  }
+
   const href = whatsappLink(
     "Hola, quería hacer una consulta sobre una propiedad.",
   );

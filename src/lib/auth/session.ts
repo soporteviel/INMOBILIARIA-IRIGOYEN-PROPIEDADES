@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getPublicSupabaseEnv } from "@/lib/supabase/env";
@@ -13,24 +14,39 @@ import { getPublicSupabaseEnv } from "@/lib/supabase/env";
  * Para que el cambio valga, hay que cerrar sesión y volver a entrar.
  * Para cortar un acceso ya emitido, además de quitar el rol hay que revocar
  * las sesiones de esa cuenta en Supabase.
+ *
+ * password_change_required obliga a elegir otra contraseña al entrar.
+ * Se pone en true al crear la cuenta y el servidor lo pasa a false
+ * recién después de guardar la clave nueva.
  */
 export type AuthState =
   | { status: "unconfigured" }
   | { status: "anonymous" }
-  | { status: "authenticated"; email: string; isAdmin: boolean };
+  | {
+      status: "authenticated";
+      userId: string;
+      email: string;
+      isAdmin: boolean;
+      mustChangePassword: boolean;
+    };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function hasAdminRole(claims: Record<string, unknown>) {
-  if (!isRecord(claims.app_metadata)) {
-    return false;
-  }
-  return claims.app_metadata.role === "admin";
+function appMetadata(claims: Record<string, unknown>) {
+  return isRecord(claims.app_metadata) ? claims.app_metadata : null;
 }
 
-export async function getAuthState(): Promise<AuthState> {
+function hasAdminRole(claims: Record<string, unknown>) {
+  return appMetadata(claims)?.role === "admin";
+}
+
+function mustChangePassword(claims: Record<string, unknown>) {
+  return hasAdminRole(claims) && appMetadata(claims)?.password_change_required === true;
+}
+
+export const getAuthState = cache(async function getAuthState(): Promise<AuthState> {
   if (!getPublicSupabaseEnv()) {
     return { status: "unconfigured" };
   }
@@ -47,12 +63,25 @@ export async function getAuthState(): Promise<AuthState> {
 
   const claims = data.claims as Record<string, unknown>;
   const email = typeof claims.email === "string" ? claims.email : "";
+  const userId = typeof claims.sub === "string" ? claims.sub : "";
 
   return {
     status: "authenticated",
+    userId,
     email,
     isAdmin: hasAdminRole(claims),
+    mustChangePassword: mustChangePassword(claims),
   };
+});
+
+export function adminEntryPath(auth: Extract<AuthState, { status: "authenticated" }>) {
+  if (!auth.isAdmin) {
+    return "/admin/denegado";
+  }
+  if (auth.mustChangePassword) {
+    return "/admin/nueva-contrasena";
+  }
+  return "/admin";
 }
 
 export async function requireAdmin() {
@@ -65,6 +94,9 @@ export async function requireAdmin() {
   }
   if (!auth.isAdmin) {
     redirect("/admin/denegado");
+  }
+  if (auth.mustChangePassword) {
+    redirect("/admin/nueva-contrasena");
   }
   return auth;
 }

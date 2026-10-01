@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { getAuthState } from "@/lib/auth/session";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export type PasswordState = {
@@ -43,11 +44,32 @@ export async function updatePasswordAction(
     redirect("/admin/login?error=config");
   }
 
+  if (!auth.userId) {
+    return { formError: "No se pudo identificar la cuenta." };
+  }
+
   const { error } = await supabase.auth.updateUser({ password });
   if (error) {
     return { formError: "No se pudo guardar la contraseña." };
   }
 
-  const next = await getAuthState();
-  redirect(next.status === "authenticated" && next.isAdmin ? "/admin" : "/admin/denegado");
+  try {
+    const admin = createAdminClient();
+    const { error: metaError } = await admin.auth.admin.updateUserById(auth.userId, {
+      app_metadata: { role: "admin", password_change_required: false },
+    });
+    if (metaError) {
+      return { formError: "La contraseña se guardó, pero hay que volver a intentarlo." };
+    }
+  } catch {
+    return { formError: "La contraseña se guardó, pero hay que volver a intentarlo." };
+  }
+
+  const { error: refreshError } = await supabase.auth.refreshSession();
+  if (refreshError) {
+    await supabase.auth.signOut();
+    redirect("/admin/login?aviso=clave");
+  }
+
+  redirect("/admin");
 }

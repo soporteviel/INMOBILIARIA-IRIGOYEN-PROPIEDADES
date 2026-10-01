@@ -1,3 +1,4 @@
+import { collapseLocation } from "@/lib/properties/locations";
 import {
   LOCATION_PRECISIONS,
   operationUsesPeriod,
@@ -5,6 +6,7 @@ import {
   PROPERTY_CURRENCIES,
   PROPERTY_OPERATIONS,
   PROPERTY_TYPES,
+  typeIsLand,
   typeUsesBedrooms,
   type LocationPrecision,
   type PricePeriod,
@@ -39,7 +41,6 @@ export type NormalizedProperty = {
 export type FieldErrors = Partial<Record<keyof PropertyFormInput | "form", string>>;
 
 const TITLE_MAX = 160;
-const TEXT_MAX = 160;
 const DESCRIPTION_MAX = 8000;
 const PRICE_MAX = 999_999_999_999.99;
 
@@ -111,7 +112,7 @@ export function normalizeProperty(
   }
 
   const description = cleanText(input.description ?? "", DESCRIPTION_MAX);
-  const location = cleanText(input.location ?? "", TEXT_MAX);
+  const location = collapseLocation(input.location ?? "");
   const propertyType = asChoice(input.propertyType ?? "", PROPERTY_TYPES);
   const operation = asChoice(input.operation ?? "", PROPERTY_OPERATIONS);
   const locationPrecision = asChoice(input.locationPrecision ?? "", LOCATION_PRECISIONS);
@@ -169,7 +170,7 @@ export function normalizeProperty(
   const totalAreaM2 = parseMeasure(input.totalAreaM2 ?? "", "La superficie total", errors, "totalAreaM2");
   const landAreaM2 = parseMeasure(input.landAreaM2 ?? "", "La superficie del terreno", errors, "landAreaM2");
 
-  if (propertyType === "Lote") {
+  if (typeIsLand(propertyType)) {
     bedrooms = null;
     bathrooms = null;
     rooms = null;
@@ -178,6 +179,7 @@ export function normalizeProperty(
     delete errors.bathrooms;
     delete errors.rooms;
     delete errors.garage;
+    delete errors.coveredAreaM2;
   } else if (propertyType === "Local") {
     bedrooms = null;
     delete errors.bedrooms;
@@ -187,20 +189,25 @@ export function normalizeProperty(
     coveredAreaM2 !== null &&
     totalAreaM2 !== null &&
     coveredAreaM2 > totalAreaM2 &&
-    propertyType !== "Lote"
+    !typeIsLand(propertyType)
   ) {
     errors.coveredAreaM2 = "La superficie cubierta no puede ser mayor que la total.";
   }
 
-  const features = Array.from(
-    new Set(
-      (Array.isArray(input.features) ? input.features : [])
-        .filter((feature): feature is string => typeof feature === "string")
-        .map((feature) => feature.trim())
-        .filter(Boolean)
-        .map((feature) => feature.slice(0, 80)),
-    ),
-  ).slice(0, 40);
+  const features: string[] = [];
+  for (const feature of Array.isArray(input.features) ? input.features : []) {
+    if (typeof feature !== "string") {
+      continue;
+    }
+    const clean = feature.trim().slice(0, 80);
+    if (!clean || features.some((item) => item.localeCompare(clean, "es", { sensitivity: "accent" }) === 0)) {
+      continue;
+    }
+    features.push(clean);
+    if (features.length >= 40) {
+      break;
+    }
+  }
 
   if (intent === "publish") {
     if (!location) {
@@ -218,9 +225,6 @@ export function normalizeProperty(
     if (!priceOnRequest && price !== null && !currency) {
       errors.currency = errors.currency ?? "Indicá si el precio está en pesos o en dólares.";
     }
-    if (!priceOnRequest && operationUsesPeriod(operation) && !pricePeriod) {
-      errors.pricePeriod = "Para publicar un alquiler o un temporal, indicá el período del precio.";
-    }
   }
 
   if (Object.keys(errors).length > 0) {
@@ -230,8 +234,8 @@ export function normalizeProperty(
   const resolvedPriceOnRequest = priceOnRequest;
   const resolvedPrice = resolvedPriceOnRequest ? null : price;
   const resolvedCurrency = resolvedPriceOnRequest || resolvedPrice === null ? null : currency;
-  const resolvedPeriod =
-    resolvedPriceOnRequest || !operationUsesPeriod(operation) ? null : pricePeriod;
+  const resolvedCovered = typeIsLand(propertyType) ? null : coveredAreaM2;
+  const resolvedPeriod = operationUsesPeriod(operation) ? pricePeriod : null;
 
   return {
     value: {
@@ -246,10 +250,10 @@ export function normalizeProperty(
       priceOnRequest: resolvedPriceOnRequest,
       pricePeriod: resolvedPeriod,
       bedrooms,
-      bathrooms: propertyType === "Lote" ? null : bathrooms,
-      rooms: propertyType === "Lote" ? null : rooms,
-      garage: propertyType === "Lote" ? null : garage,
-      coveredAreaM2,
+      bathrooms: typeIsLand(propertyType) ? null : bathrooms,
+      rooms: typeIsLand(propertyType) ? null : rooms,
+      garage: typeIsLand(propertyType) ? null : garage,
+      coveredAreaM2: resolvedCovered,
       totalAreaM2,
       landAreaM2,
       features,

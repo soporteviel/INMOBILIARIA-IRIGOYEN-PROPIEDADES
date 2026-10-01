@@ -8,51 +8,55 @@ import { site } from "@/config/site";
 
 export function propertyFacts(property: Property) {
   const facts: { label: string; value: string }[] = [];
-  const isLot = property.type === "Lote";
+  const isLot = property.type === "Lote" || property.type === "Terreno";
 
-  if (!isLot && property.rooms && property.rooms > 0) {
+  function known(value: number | null | undefined) {
+    return value !== null && value !== undefined;
+  }
+
+  if (!isLot && known(property.rooms)) {
     facts.push({ label: "Ambientes", value: String(property.rooms) });
   }
 
   if (propertyUsesBedrooms(property.type)) {
-    if (property.bedrooms > 0) {
+    if (known(property.bedrooms)) {
       facts.push({ label: "Dormitorios", value: String(property.bedrooms) });
     }
-    if (property.bathrooms > 0) {
+    if (known(property.bathrooms)) {
       facts.push({ label: "Baños", value: String(property.bathrooms) });
     }
-  } else if (!isLot && property.bathrooms > 0) {
+  } else if (!isLot && known(property.bathrooms)) {
     facts.push({ label: "Baños", value: String(property.bathrooms) });
   }
 
-  if (property.garage && property.garage > 0) {
+  if (known(property.garage)) {
     facts.push({ label: "Cochera", value: String(property.garage) });
   }
 
   if (isLot) {
-    if (property.landAreaM2 && property.landAreaM2 > 0) {
+    if (known(property.landAreaM2)) {
       facts.push({
         label: "Superficie del terreno",
-        value: formatSquareMeters(property.landAreaM2),
+        value: formatSquareMeters(property.landAreaM2 as number),
       });
     }
   } else {
-    if (property.coveredAreaM2 && property.coveredAreaM2 > 0) {
+    if (known(property.coveredAreaM2)) {
       facts.push({
         label: "Superficie cubierta",
-        value: formatSquareMeters(property.coveredAreaM2),
+        value: formatSquareMeters(property.coveredAreaM2 as number),
       });
     }
-    if (property.totalAreaM2 && property.totalAreaM2 > 0) {
+    if (known(property.totalAreaM2)) {
       facts.push({
         label: "Superficie total",
-        value: formatSquareMeters(property.totalAreaM2),
+        value: formatSquareMeters(property.totalAreaM2 as number),
       });
     }
-    if (property.landAreaM2 && property.landAreaM2 > 0) {
+    if (known(property.landAreaM2)) {
       facts.push({
         label: "Superficie del terreno",
-        value: formatSquareMeters(property.landAreaM2),
+        value: formatSquareMeters(property.landAreaM2 as number),
       });
     }
   }

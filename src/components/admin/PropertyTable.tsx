@@ -6,18 +6,65 @@ import {
   publishPropertyAction,
   setFeaturedAction,
 } from "@/app/admin/propiedades/actions";
-import { IconMore, IconPause, IconPublish, IconTrash } from "@/components/admin/icons";
+import { IconMore, IconPause, IconPlus, IconPublish, IconTrash } from "@/components/admin/icons";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import {
   formatPropertyPrice,
+  PROPERTY_OPERATIONS,
+  PROPERTY_TYPES,
+  type PropertyOperation,
   type PropertyRecord,
   type PropertyStatus,
+  type PropertyType,
 } from "@/lib/properties/model";
-import { App, Button, Dropdown, Input, Segmented, Switch, Table, Tooltip } from "antd";
+import { App, Button, Dropdown, Input, Modal, Segmented, Select, Switch, Table, Tooltip } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+
+const SAVE_NOTICES = {
+  creada: {
+    title: "Propiedad creada",
+    description: "El borrador quedó guardado.",
+  },
+  guardada: {
+    title: "Cambios guardados",
+    description: "La ficha se actualizó.",
+  },
+  publicada: {
+    title: "Propiedad publicada",
+    description: "Ya figura como publicada en el listado.",
+  },
+  reactivada: {
+    title: "Propiedad reactivada",
+    description: "Volvió a estar publicada.",
+  },
+  pausada: {
+    title: "Propiedad pausada",
+    description: "Dejó de estar publicada.",
+  },
+} as const;
+
+function saveNoticeCopy(value: string | null) {
+  if (!value || !(value in SAVE_NOTICES)) {
+    return null;
+  }
+  return SAVE_NOTICES[value as keyof typeof SAVE_NOTICES];
+}
+
+function NewPropertyButton({ className = "" }: { className?: string }) {
+  return (
+    <Link
+      href="/admin/propiedades/nueva"
+      className={`inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-[#155547] px-4 text-sm font-medium text-white transition-colors hover:bg-[#0c332e] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#155547] ${className}`}
+      style={{ backgroundColor: "#155547", color: "#ffffff" }}
+    >
+      <IconPlus />
+      Nueva propiedad
+    </Link>
+  );
+}
 
 const STATUS_TABS: { label: string; value: PropertyStatus | "" }[] = [
   { label: "Todas", value: "" },
@@ -30,13 +77,19 @@ export function PropertyTable({
   properties,
   query,
   status,
+  propertyType,
+  operation,
   removed,
+  notice: noticeValue,
   unavailableMessage,
 }: {
   properties: PropertyRecord[];
   query: string;
   status: PropertyStatus | "";
+  propertyType: PropertyType | "";
+  operation: PropertyOperation | "";
   removed: boolean;
+  notice: string | null;
   unavailableMessage: string | null;
 }) {
   const router = useRouter();
@@ -44,15 +97,30 @@ export function PropertyTable({
   const [pending, startTransition] = useTransition();
   const [search, setSearch] = useState(query);
   const [filter, setFilter] = useState<PropertyStatus | "">(status);
-  const [source, setSource] = useState({ query, status });
+  const [typeFilter, setTypeFilter] = useState<PropertyType | "">(propertyType);
+  const [operationFilter, setOperationFilter] = useState<PropertyOperation | "">(operation);
+  const [source, setSource] = useState({ query, status, propertyType, operation });
+  const notice = saveNoticeCopy(noticeValue);
 
-  if (source.query !== query || source.status !== status) {
-    setSource({ query, status });
+  if (
+    source.query !== query ||
+    source.status !== status ||
+    source.propertyType !== propertyType ||
+    source.operation !== operation
+  ) {
+    setSource({ query, status, propertyType, operation });
     setSearch(query);
     setFilter(status);
+    setTypeFilter(propertyType);
+    setOperationFilter(operation);
   }
 
-  function apply(nextQuery = search, nextStatus = filter) {
+  function apply(
+    nextQuery = search,
+    nextStatus = filter,
+    nextType = typeFilter,
+    nextOperation = operationFilter,
+  ) {
     const params = new URLSearchParams();
     const cleanQuery = nextQuery.trim();
     if (cleanQuery) {
@@ -60,6 +128,12 @@ export function PropertyTable({
     }
     if (nextStatus) {
       params.set("estado", nextStatus);
+    }
+    if (nextType) {
+      params.set("tipo", nextType);
+    }
+    if (nextOperation) {
+      params.set("operacion", nextOperation);
     }
     const href = params.size ? `/admin?${params}` : "/admin";
     router.push(href);
@@ -73,7 +147,27 @@ export function PropertyTable({
   function clearFilters() {
     setSearch("");
     setFilter("");
+    setTypeFilter("");
+    setOperationFilter("");
     router.push("/admin");
+  }
+
+  function closeNotice() {
+    const params = new URLSearchParams();
+    if (query) {
+      params.set("q", query);
+    }
+    if (status) {
+      params.set("estado", status);
+    }
+    if (propertyType) {
+      params.set("tipo", propertyType);
+    }
+    if (operation) {
+      params.set("operacion", operation);
+    }
+    const href = params.size ? `/admin?${params}` : "/admin";
+    router.replace(href);
   }
 
   function run(task: () => Promise<{ ok: true } | { ok: false; message: string }>, success: string) {
@@ -114,7 +208,7 @@ export function PropertyTable({
     });
   }
 
-  const hasFilters = Boolean(query || status);
+  const hasFilters = Boolean(query || status || propertyType || operation);
   const capped = properties.length >= 200;
   const countText = capped
     ? "Se muestran 200 propiedades"
@@ -126,20 +220,32 @@ export function PropertyTable({
 
   return (
     <section>
-      <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-medium tracking-normal text-[#2a2a2a]">Propiedades</h1>
-          {unavailableMessage ? null : (
-            <p className="mt-1 text-[15px] text-[#5c5854]">{countText}</p>
-          )}
-        </div>
-        <Link
-          href="/admin/propiedades/nueva"
-          className="inline-flex h-[42px] items-center justify-center rounded-lg bg-[#155547] px-4 text-[15px] font-medium text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#155547]"
-        >
-          Nueva propiedad
-        </Link>
-      </div>
+      <Modal
+        open={notice !== null}
+        centered
+        width={420}
+        title={
+          notice ? (
+            <span className="inline-flex items-center gap-3">
+              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#e7f2ee] text-[#155547]">
+                <IconPublish />
+              </span>
+              {notice.title}
+            </span>
+          ) : null
+        }
+        footer={
+          <Button type="primary" onClick={closeNotice}>
+            Listo
+          </Button>
+        }
+        closable={false}
+        maskClosable={false}
+        onCancel={closeNotice}
+      >
+        <p className="text-[15px] leading-relaxed text-[#5c5854]">{notice?.description}</p>
+      </Modal>
+      <h1 className="mb-4 text-xl font-medium tracking-normal text-[#2a2a2a]">Propiedades</h1>
 
       {removed ? (
         <p className="mb-4 rounded-lg border border-[#d5e4dc] bg-[#f3f8f5] px-4 py-3 text-[15px] text-[#155547]" role="status">
@@ -148,15 +254,15 @@ export function PropertyTable({
       ) : null}
 
       {unavailableMessage ? (
-        <div className="rounded-[10px] border border-[#e4e0d8] bg-white px-5 py-8" role="alert">
+        <div className="rounded-lg border border-[#e4e0d8] bg-white px-5 py-8" role="alert">
           <p className="text-[15px] text-[#2a2a2a]">{unavailableMessage}</p>
           <Button className="mt-4" onClick={() => router.refresh()}>
             Reintentar
           </Button>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-[10px] border border-[#e4e0d8] bg-white">
-          <div className="flex flex-col gap-3 border-b border-[#efece6] p-4 lg:flex-row lg:items-center">
+        <>
+          <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
             <Input.Search
               allowClear
               placeholder="Buscar por título o ubicación"
@@ -169,93 +275,105 @@ export function PropertyTable({
                 }
               }}
               onSearch={(value) => apply(value, filter)}
-              className="min-w-0 lg:max-w-sm"
+              className="min-w-0 sm:max-w-xs"
               aria-label="Buscar propiedades"
             />
-            <div className="grid grid-cols-2 gap-2 sm:hidden" role="group" aria-label="Estado">
-              {STATUS_TABS.map((tab) => {
-                const selected = filter === tab.value;
-                return (
-                  <button
-                    key={tab.label}
-                    type="button"
-                    aria-pressed={selected}
-                    onClick={() => selectStatus(tab.value)}
-                    className={`h-[42px] rounded-lg border text-[15px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#155547] ${
-                      selected
-                        ? "border-[#155547] bg-white font-medium text-[#155547]"
-                        : "border-[#e4e0d8] bg-[#fbfaf7] text-[#2a2a2a]"
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                );
-              })}
+            <div className="grid grid-cols-2 gap-2 sm:flex">
+              <Select
+                allowClear
+                placeholder="Tipo"
+                aria-label="Tipo de propiedad"
+                value={typeFilter || undefined}
+                className="w-full sm:w-40"
+                options={PROPERTY_TYPES.map((item) => ({ value: item, label: item }))}
+                onChange={(value) => {
+                  const next = (value ?? "") as PropertyType | "";
+                  setTypeFilter(next);
+                  apply(search, filter, next, operationFilter);
+                }}
+              />
+              <Select
+                allowClear
+                placeholder="Operación"
+                aria-label="Operación"
+                value={operationFilter || undefined}
+                className="w-full sm:w-40"
+                options={PROPERTY_OPERATIONS.map((item) => ({ value: item, label: item }))}
+                onChange={(value) => {
+                  const next = (value ?? "") as PropertyOperation | "";
+                  setOperationFilter(next);
+                  apply(search, filter, typeFilter, next);
+                }}
+              />
             </div>
-            <Segmented
-              className="hidden sm:inline-flex"
-              aria-label="Estado"
-              value={filter}
-              onChange={(value) => selectStatus(value as PropertyStatus | "")}
-              options={STATUS_TABS.map((tab) => ({ label: tab.label, value: tab.value }))}
-            />
+            <div className="grid grid-cols-2 gap-2 sm:hidden">
+              <div className="col-span-2 grid grid-cols-2 gap-2" role="group" aria-label="Estado">
+                {STATUS_TABS.map((tab) => {
+                  const selected = filter === tab.value;
+                  return (
+                    <button
+                      key={tab.label}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => selectStatus(tab.value)}
+                      className={`h-9 rounded-lg border text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#155547] ${
+                        selected
+                          ? "border-[#155547] bg-white font-medium text-[#155547]"
+                          : "border-[#e4e0d8] bg-white text-[#2a2a2a]"
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <NewPropertyButton className="col-span-2 w-full" />
+            </div>
+            <div className="hidden sm:block">
+              <Segmented
+                aria-label="Estado"
+                value={filter}
+                onChange={(value) => selectStatus(value as PropertyStatus | "")}
+                options={STATUS_TABS.map((tab) => ({ label: tab.label, value: tab.value }))}
+              />
+            </div>
+            <div className="hidden sm:ml-10 sm:block">
+              <NewPropertyButton />
+            </div>
+            <p className="text-sm text-[#5c5854] sm:ml-auto">{countText}</p>
           </div>
 
-          {properties.length === 0 ? (
-            <div className="px-5 py-12 text-center">
-              {hasFilters ? (
-                <>
-                  <p className="text-[15px] text-[#2a2a2a]">Ninguna propiedad coincide con la búsqueda o los filtros.</p>
-                  <Button className="mt-4" onClick={clearFilters}>
-                    Limpiar filtros
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <p className="text-base text-[#2a2a2a]">Todavía no cargaste propiedades</p>
-                  <Link
-                    href="/admin/propiedades/nueva"
-                    className="mt-4 inline-flex h-[42px] items-center justify-center rounded-lg bg-[#155547] px-4 text-[15px] font-medium text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#155547]"
-                  >
-                    Nueva propiedad
-                  </Link>
-                </>
-              )}
-            </div>
-          ) : (
-            <>
-              <ul className="md:hidden">
-                {properties.map((row) => (
-                  <li key={row.id} className="border-b border-[#efece6] px-4 py-4 last:border-b-0">
-                    <PropertySummary row={row} />
-                    <div className="mt-3 flex items-center justify-between gap-3">
-                      <FeaturedControl
-                        row={row}
-                        pending={pending}
-                        onToggle={(checked) =>
-                          run(
-                            () => setFeaturedAction(row.id, checked),
-                            checked ? "Propiedad destacada." : "Dejó de estar destacada.",
-                          )
-                        }
-                      />
-                      <RowActions row={row} pending={pending} onRun={run} onDelete={confirmDelete} />
+          <div className="min-w-0 overflow-hidden rounded-lg border border-[#e4e0d8] bg-white">
+            {properties.length === 0 ? (
+              <div className="px-5 py-12 text-center">
+                {hasFilters ? (
+                  <>
+                    <p className="text-[15px] text-[#2a2a2a]">Ninguna propiedad coincide con la búsqueda o los filtros.</p>
+                    <Button className="mt-4" onClick={clearFilters}>
+                      Limpiar filtros
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-base text-[#2a2a2a]">Todavía no cargaste propiedades</p>
+                    <div className="mt-4 flex justify-center">
+                      <NewPropertyButton />
                     </div>
-                  </li>
-                ))}
-              </ul>
-              <div className="hidden min-w-0 md:block">
-                <Table
-                  rowKey="id"
-                  columns={columns({ pending, run, confirmDelete })}
-                  dataSource={properties}
-                  pagination={false}
-                  tableLayout="fixed"
-                />
+                  </>
+                )}
               </div>
-            </>
-          )}
-        </div>
+            ) : (
+              <Table
+                rowKey="id"
+                size="small"
+                columns={columns({ pending, run, confirmDelete })}
+                dataSource={properties}
+                pagination={false}
+                scroll={{ x: 980 }}
+              />
+            )}
+          </div>
+        </>
       )}
     </section>
   );
@@ -335,12 +453,6 @@ function PropertySummary({ row }: { row: PropertyRecord }) {
         </Link>
       </Tooltip>
       <p className="mt-0.5 truncate text-sm text-[#5c5854]">{row.location || "Sin ubicación"}</p>
-      <p className="mt-1 text-sm text-[#5c5854] md:hidden">
-        {typeAndOperation(row)} · {formatPropertyPrice(row)}
-      </p>
-      <div className="mt-2 md:hidden">
-        <StatusBadge status={row.status} />
-      </div>
     </div>
   );
 }
@@ -409,7 +521,7 @@ function RowActions({
     <div className="flex items-center gap-1">
       <Link
         href={`/admin/propiedades/${row.id}`}
-        className="inline-flex h-11 items-center rounded-lg px-2 text-[15px] font-medium text-[#155547] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#155547]"
+        className="inline-flex h-8 items-center rounded-md px-2 text-sm font-medium text-[#155547] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#155547]"
       >
         Editar
       </Link>
@@ -434,7 +546,7 @@ function RowActions({
           aria-label={`Más acciones de ${row.title}`}
           icon={<IconMore />}
           disabled={pending}
-          className="!h-11 !w-11"
+          className="!h-8 !w-8"
         />
       </Dropdown>
     </div>

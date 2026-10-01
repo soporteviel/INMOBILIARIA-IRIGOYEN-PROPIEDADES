@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { getAuthState } from "@/lib/auth/session";
+import { adminEntryPath, getAuthState } from "@/lib/auth/session";
 import { getPublicSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 
@@ -65,9 +65,5 @@ export async function loginAction(
     await supabase.auth.signOut();
     return { formError: "No se pudo verificar la sesión." };
   }
-  if (!auth.isAdmin) {
-    redirect("/admin/denegado");
-  }
-
-  redirect("/admin");
+  redirect(adminEntryPath(auth));
 }

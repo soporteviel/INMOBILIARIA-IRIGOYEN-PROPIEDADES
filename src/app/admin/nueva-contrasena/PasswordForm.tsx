@@ -20,8 +20,7 @@ export function PasswordForm() {
         </p>
       ) : null}
       <p className="text-sm leading-relaxed text-muted">
-        Elegí la contraseña de esta cuenta. Si la invitación ya te autorizó como administrador,
-        vas a entrar al panel.
+        Elegí una contraseña nueva y repetila. Al guardarla, la clave con la que entraste deja de servir.
       </p>
 
       <div>

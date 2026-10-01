@@ -6,18 +6,11 @@ import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { PropertyCard } from "@/components/PropertyCard";
 import { PropertyGallery } from "@/components/property/PropertyGallery";
-import {
-  PropertyFacts,
-  PropertyInquiry,
-} from "@/components/property/PropertySummary";
+import { PropertyFacts, PropertyInquiry } from "@/components/property/PropertySummary";
 import { Container, PropertyTitle } from "@/components/ui";
 import { site, whatsappLink } from "@/config/site";
-import {
-  detailPrice,
-  featuredProperties,
-  getOtherProperties,
-  getPropertyBySlug,
-} from "@/data/properties";
+import { formatPublicPrice } from "@/data/properties";
+import { getPublishedCatalog } from "@/lib/properties/public-catalog";
 
 type PropertyPageProps = {
   params: Promise<{ slug: string }>;
@@ -33,15 +26,13 @@ async function propertyUrl(slug: string) {
   return `${proto}://${host}/propiedades/${slug}`;
 }
 
-export function generateStaticParams() {
-  return featuredProperties.map((property) => ({ slug: property.slug }));
-}
-
-export async function generateMetadata({
-  params,
-}: PropertyPageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: PropertyPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const property = getPropertyBySlug(slug);
+  const catalog = await getPublishedCatalog();
+  const property = catalog.ok ? catalog.properties.find((item) => item.slug === slug) : null;
+  if (!catalog.ok) {
+    return { title: `Propiedades | ${site.name}` };
+  }
   if (!property) {
     return { title: `Propiedad no encontrada | ${site.name}` };
   }
@@ -53,21 +44,35 @@ export async function generateMetadata({
 
 export default async function PropertyPage({ params }: PropertyPageProps) {
   const { slug } = await params;
-  const property = getPropertyBySlug(slug);
+  const catalog = await getPublishedCatalog();
+  if (!catalog.ok) {
+    return (
+      <>
+        <Header />
+        <main id="contenido" className="bg-crema">
+          <Container className="py-20 sm:py-28">
+            <h1 className="font-serif text-3xl text-verde-profundo sm:text-4xl">Propiedades</h1>
+            <p className="mt-4 max-w-xl text-base leading-relaxed text-tinta">{catalog.message}</p>
+          </Container>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
+  const property = catalog.properties.find((item) => item.slug === slug);
   if (!property) {
     notFound();
   }
 
-  const priceLabel = detailPrice(property.price);
+  const priceLabel = formatPublicPrice(property, "detail");
   const url = await propertyUrl(property.slug);
-  const whatsappHref = whatsappLink(
-    `Hola, quiero consultar por ${property.title}. ${url}`,
-  );
+  const whatsappHref = whatsappLink(`Hola, quiero consultar por ${property.title}. ${url}`);
   const paragraphs = property.description
     ?.split(/\n\n+/)
     .map((paragraph) => paragraph.trim())
     .filter(Boolean);
-  const others = getOtherProperties(property.slug);
+  const others = catalog.properties.filter((item) => item.slug !== property.slug).slice(0, 3);
   const precisionLabel =
     property.locationPrecision === "approximate"
       ? "Ubicación aproximada"
@@ -101,7 +106,10 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
           </nav>
 
           <div className="mt-4">
-            <PropertyGallery photos={property.photos} />
+            <PropertyGallery
+              photos={property.photos}
+              emptyLabel={catalog.photosUnavailable ? "No pudimos cargar las fotos." : "Sin fotos"}
+            />
           </div>
 
           <header className="mt-8 max-w-3xl">
@@ -112,9 +120,7 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
               <PropertyTitle text={property.title} />
             </h1>
             <p className="mt-2 text-sm text-muted">{property.location}</p>
-            <p className="mt-4 font-sans text-2xl font-semibold tabular-nums text-verde">
-              {priceLabel}
-            </p>
+            <p className="mt-4 font-sans text-2xl font-semibold tabular-nums text-verde">{priceLabel}</p>
           </header>
 
           <div className="mt-10 grid gap-12 lg:grid-cols-3 lg:gap-16">
@@ -131,15 +137,10 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
 
               {property.features && property.features.length > 0 ? (
                 <section className="mt-10">
-                  <h2 className="font-serif text-2xl text-verde-profundo">
-                    Características
-                  </h2>
+                  <h2 className="font-serif text-2xl text-verde-profundo">Características</h2>
                   <ul className="mt-4 grid gap-x-10 sm:grid-cols-2">
                     {property.features.map((feature) => (
-                      <li
-                        key={feature}
-                        className="border-b border-linea py-2.5 text-sm text-tinta"
-                      >
+                      <li key={feature} className="border-b border-linea py-2.5 text-sm text-tinta">
                         {feature}
                       </li>
                     ))}
@@ -154,16 +155,12 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
           <section className="mt-14 border-t border-linea pt-8">
             <h2 className="font-serif text-2xl text-verde-profundo">Ubicación</h2>
             <p className="mt-3 text-base text-tinta">{property.location}</p>
-            {precisionLabel ? (
-              <p className="mt-1 text-sm text-muted">{precisionLabel}</p>
-            ) : null}
+            {precisionLabel ? <p className="mt-1 text-sm text-muted">{precisionLabel}</p> : null}
           </section>
 
           {others.length > 0 ? (
             <section className="mt-14 border-t border-linea pt-8">
-              <h2 className="font-serif text-2xl text-verde-profundo">
-                Otras propiedades
-              </h2>
+              <h2 className="font-serif text-2xl text-verde-profundo">Otras propiedades</h2>
               <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {others.map((item) => (
                   <PropertyCard key={item.id} property={item} />

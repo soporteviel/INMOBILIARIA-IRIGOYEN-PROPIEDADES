@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { logoutAction } from "@/app/admin/actions";
 import { adminButtonClass, adminLinkClass, AdminFrame } from "@/components/admin/AdminFrame";
-import { getAuthState } from "@/lib/auth/session";
+import { adminEntryPath, getAuthState } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,7 @@ export default async function AdminDeniedPage() {
     redirect("/admin/login");
   }
   if (auth.isAdmin) {
-    redirect("/admin");
+    redirect(adminEntryPath(auth));
   }
 
   return (

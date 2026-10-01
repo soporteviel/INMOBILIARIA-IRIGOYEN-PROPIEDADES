@@ -7,20 +7,7 @@ import { site } from "@/config/site";
 import { Container } from "@/components/ui";
 import { IconMenu } from "@/components/icons";
 
-function sectionHref(href: string, homePath: string) {
-  if (homePath === "/" || !href.startsWith("/#")) {
-    return href;
-  }
-  return `${homePath}${href.slice(1)}`;
-}
-
-export function Header({
-  variant = "solid",
-  homePath = "/",
-}: {
-  variant?: "solid" | "overlay";
-  homePath?: string;
-}) {
+export function Header({ variant = "solid" }: { variant?: "solid" | "overlay" }) {
   const [open, setOpen] = useState(false);
   const [overHero, setOverHero] = useState(true);
   const overlay = variant === "overlay";
@@ -80,7 +67,7 @@ export function Header({
         Saltar al contenido
       </a>
       <Container className="flex items-center justify-between gap-4 py-3">
-        <Link href={homePath === "/" ? "/" : `${homePath}#inicio`} className="shrink-0" onClick={() => setOpen(false)}>
+        <Link href="/" className="shrink-0" onClick={() => setOpen(false)}>
           {overlay ? (
             <span className="relative block h-20 w-20 sm:h-24 sm:w-24">
               <Image
@@ -121,7 +108,7 @@ export function Header({
           <ul className="flex items-center gap-8">
             {site.nav.map((item) => (
               <li key={item.href}>
-                <a href={sectionHref(item.href, homePath)} className={linkClass}>
+                <a href={item.href} className={linkClass}>
                   {item.label}
                 </a>
               </li>
@@ -155,7 +142,7 @@ export function Header({
                 {site.nav.map((item) => (
                   <li key={item.href}>
                     <a
-                      href={sectionHref(item.href, homePath)}
+                      href={item.href}
                       className="block py-3 font-serif text-2xl text-verde-profundo"
                       onClick={() => setOpen(false)}
                     >

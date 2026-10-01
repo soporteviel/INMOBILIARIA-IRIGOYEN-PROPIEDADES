@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { isConfigured, site } from "@/config/site";
+import { whatsappLink } from "@/config/site";
 import {
   emptyValuationForm,
   formatValuationMessage,
@@ -43,26 +43,15 @@ function validate(values: ValuationFormValues): FormErrors {
   return errors;
 }
 
-function buildMailto(values: ValuationFormValues) {
-  if (!isConfigured(site.contact.email)) {
-    return null;
-  }
-
-  const subject = encodeURIComponent(
-    `Consulta de tasación — ${values.fullName.trim()}`,
-  );
-  const body = encodeURIComponent(formatValuationMessage(values));
-  const copy = values.sendCopy
-    ? `&cc=${encodeURIComponent(values.email.trim())}`
-    : "";
-
-  return `mailto:${site.contact.email}?subject=${subject}&body=${body}${copy}`;
+function buildWhatsapp(values: ValuationFormValues) {
+  return whatsappLink(formatValuationMessage(values));
 }
 
 export function ValuationForm() {
   const [values, setValues] = useState<ValuationFormValues>(emptyValuationForm);
   const [errors, setErrors] = useState<FormErrors>({});
   const [sent, setSent] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   function update<K extends keyof ValuationFormValues>(
     key: K,
@@ -81,11 +70,14 @@ export function ValuationForm() {
       return;
     }
 
-    const mailto = buildMailto(values);
-    if (mailto) {
-      window.location.href = mailto;
+    const whatsapp = buildWhatsapp(values);
+    if (!whatsapp) {
+      setSubmitError("No se pudo abrir WhatsApp. Escribinos desde el botón de contacto.");
+      return;
     }
 
+    setSubmitError(null);
+    window.open(whatsapp, "_blank", "noopener,noreferrer");
     setSent(true);
   }
 
@@ -98,13 +90,6 @@ export function ValuationForm() {
         <h3 className="mt-3 font-serif text-2xl text-verde-profundo">
           Gracias, {values.fullName.trim().split(" ")[0] || ""}
         </h3>
-        <p className="mt-4 text-base leading-relaxed text-muted">
-          Se abre tu correo para enviar la consulta
-          {isConfigured(site.contact.email)
-            ? ` a ${site.contact.email}`
-            : ""}
-          . Si no se abrió, escribinos por WhatsApp.
-        </p>
         <button
           type="button"
           className="mt-8 inline-flex min-h-12 items-center justify-center bg-verde px-6 text-sm font-medium tracking-wide text-papel transition-colors hover:bg-verde-medio"
@@ -263,11 +248,12 @@ export function ValuationForm() {
               value={values.notes}
               onChange={(value) => update("notes", value)}
             />
+            {submitError ? <p className="text-sm text-[#9f2d2d]">{submitError}</p> : null}
             <button
               type="submit"
-              className="inline-flex min-h-10 w-full items-center justify-center bg-verde px-5 text-sm font-medium tracking-wide text-papel transition-colors hover:bg-verde-medio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-verde-profundo"
+              className="inline-flex min-h-10 w-full cursor-pointer items-center justify-center bg-verde px-5 text-sm font-medium tracking-wide text-papel transition-colors hover:bg-verde-medio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-verde-profundo"
             >
-              Enviar consulta
+              Enviar por WhatsApp
             </button>
           </div>
         </section>

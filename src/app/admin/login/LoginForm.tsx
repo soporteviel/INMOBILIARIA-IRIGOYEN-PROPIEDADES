@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useActionState } from "react";
 import { loginAction, type LoginState } from "@/app/admin/login/actions";
-import { adminButtonClass, adminFieldClass, adminLinkClass } from "@/components/admin/AdminFrame";
+import { adminButtonClass, adminFieldClass } from "@/components/admin/AdminFrame";
 
 const initialState: LoginState = {};
 
@@ -65,10 +64,6 @@ export function LoginForm({ disabled }: { disabled: boolean }) {
       <button type="submit" className={adminButtonClass} disabled={disabled || pending}>
         {pending ? "Ingresando…" : "Ingresar"}
       </button>
-
-      <Link href="/admin/recuperar" className={`${adminLinkClass} text-center`}>
-        ¿Olvidaste tu contraseña?
-      </Link>
     </form>
   );
 }

@@ -1,69 +1,155 @@
 "use client";
 
 import { logoutAction } from "@/app/admin/actions";
-import { IconChevron } from "@/components/admin/icons";
+import { IconClose, IconMenu, IconProperties } from "@/components/admin/icons";
 import { site } from "@/config/site";
-import { Dropdown } from "antd";
 import Image from "next/image";
 import Link from "next/link";
-import { useRef, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import { useState, type ReactNode } from "react";
 
-export function AdminShell({ email, children }: { email: string; children: ReactNode }) {
-  const logoutRef = useRef<HTMLFormElement>(null);
-  const accountLabel = email || "Cuenta";
+const AUTH_PREFIXES = ["/admin/login", "/admin/nueva-contrasena", "/admin/denegado"];
 
+function isAuthScreen(pathname: string) {
+  return AUTH_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+function propertiesActive(pathname: string) {
+  return pathname === "/admin" || pathname.startsWith("/admin/propiedades");
+}
+
+function SidebarContent({
+  email,
+  active,
+  onNavigate,
+}: {
+  email: string;
+  active: boolean;
+  onNavigate: () => void;
+}) {
   return (
-    <div className="min-h-screen overflow-x-clip bg-[#f6f3ed] text-[#2a2a2a]">
-      <header className="border-b border-[#e4e0d8] bg-white">
-        <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-3 px-5 sm:gap-4 sm:px-8">
-          <Link href="/admin" className="flex min-w-0 items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#155547]">
-            <Image
-              src={site.logo.src}
-              alt=""
-              width={40}
-              height={40}
-              className="h-10 w-10 object-contain"
-            />
-            <span className="truncate text-base font-medium">Administración</span>
-          </Link>
+    <div className="flex h-full min-h-0 flex-1 flex-col">
+      <div className="px-4 pt-4">
+        <Link
+          href="/admin"
+          onClick={onNavigate}
+          className="mx-auto flex w-fit rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#155547]"
+        >
+          <Image
+            src={site.logo.src}
+            alt={site.logo.alt}
+            width={site.logo.width}
+            height={site.logo.height}
+            sizes="112px"
+            priority
+            className="h-auto w-28 object-contain"
+          />
+        </Link>
+        <p className="mt-1 text-center text-xs text-[#5c5854]">Administración</p>
+      </div>
+      <div className="mx-4 mt-4 border-t border-[#2a2a2a]/10" />
+      <nav className="mt-3 px-3" aria-label="Administración">
+        <Link
+          href="/admin"
+          aria-current={active ? "page" : undefined}
+          onClick={onNavigate}
+          className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-[15px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#155547] ${
+            active ? "font-medium text-[#155547]" : "text-[#2a2a2a]"
+          }`}
+          style={active ? { backgroundColor: "rgba(21, 85, 71, 0.14)" } : undefined}
+        >
+          <IconProperties />
+          Propiedades
+        </Link>
+      </nav>
+      <div className="mt-auto border-t border-[#efece6] px-4 py-4">
+        <p className="truncate text-sm text-[#5c5854]" title={email}>
+          {email}
+        </p>
+        <div className="mt-3 grid gap-2">
           <Link
             href="/"
-            className="ml-auto shrink-0 rounded-md text-[15px] text-[#155547] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#155547]"
+            onClick={onNavigate}
+            className="inline-flex h-8 items-center justify-center rounded-md border border-[#e4e0d8] bg-white px-3 text-sm text-[#155547] hover:bg-[#f6f3ed] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#155547]"
           >
-            Ver sitio
+            Salir a la tienda
           </Link>
-          <form ref={logoutRef} action={logoutAction}>
-            <Dropdown
-              trigger={["click"]}
-              menu={{
-                items: [
-                  {
-                    key: "logout",
-                    label: "Cerrar sesión",
-                    onClick: () => logoutRef.current?.requestSubmit(),
-                  },
-                ],
-              }}
+          <form action={logoutAction}>
+            <button
+              type="submit"
+              className="inline-flex h-8 w-full items-center justify-center rounded-md border border-[#e4e0d8] bg-white px-3 text-sm text-[#5c5854] hover:bg-[#f6f3ed] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#155547]"
             >
-              <button
-                type="button"
-                className="inline-flex h-10 min-w-0 max-w-[9rem] shrink items-center gap-1 rounded-lg border border-[#e4e0d8] bg-white px-3 text-sm text-[#2a2a2a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#155547] sm:max-w-[16rem]"
-                aria-label={`Menú de ${accountLabel}`}
-                title={accountLabel}
-              >
-                <span className="truncate">{accountLabel}</span>
-                <IconChevron />
-              </button>
-            </Dropdown>
+              Cerrar sesión
+            </button>
           </form>
         </div>
-      </header>
-      <main className="mx-auto w-full max-w-[1280px] px-5 pt-6 pb-28 sm:px-8 sm:pt-8">
-        <p className="mb-6 max-w-3xl text-[15px] leading-relaxed text-[#5c5854]">
-          Los cambios de este panel todavía no se ven en el sitio público. La carga de fotos sigue pendiente.
-        </p>
-        {children}
-      </main>
+      </div>
+    </div>
+  );
+}
+
+export function AdminShell({ email, children }: { email: string | null; children: ReactNode }) {
+  const pathname = usePathname();
+  const [openPath, setOpenPath] = useState<string | null>(null);
+  const open = openPath === pathname;
+  const accountLabel = email || "Cuenta";
+  const active = propertiesActive(pathname);
+
+  if (!email || isAuthScreen(pathname)) {
+    return children;
+  }
+
+  return (
+    <div className="min-h-screen overflow-x-hidden bg-[#f4f2ee] text-[#2a2a2a]">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 border-r border-[#e4e0d8] bg-white lg:flex">
+        <SidebarContent email={accountLabel} active={active} onNavigate={() => setOpenPath(null)} />
+      </aside>
+
+      {open ? (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button
+            type="button"
+            className="absolute inset-0 bg-[#2a2a2a]/40"
+            aria-label="Cerrar menú"
+            onClick={() => setOpenPath(null)}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menú"
+            className="absolute inset-y-0 left-0 flex w-60 max-w-[85vw] flex-col bg-white shadow-[0_8px_24px_rgba(42,42,42,0.16)]"
+          >
+            <div className="flex justify-end px-3 pt-3">
+              <button
+                type="button"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-[#2a2a2a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#155547]"
+                aria-label="Cerrar menú"
+                onClick={() => setOpenPath(null)}
+              >
+                <IconClose />
+              </button>
+            </div>
+            <div className="flex min-h-0 flex-1 flex-col">
+              <SidebarContent email={accountLabel} active={active} onNavigate={() => setOpenPath(null)} />
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="min-w-0 lg:pl-60">
+        <div className="flex h-12 items-center border-b border-[#e4e0d8] bg-white px-4 lg:hidden">
+          <button
+            type="button"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-[#2a2a2a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#155547]"
+            aria-label="Abrir menú"
+            aria-expanded={open}
+            onClick={() => setOpenPath(pathname)}
+          >
+            <IconMenu />
+          </button>
+        </div>
+        <main className="min-w-0 px-4 py-4 sm:px-6 lg:px-8 lg:py-6">{children}</main>
+      </div>
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { getPublicSupabaseEnv } from "@/lib/supabase/env";
 /**
  * Cliente privilegiado. La clave secreta evita RLS y no debe usarse para
  * login, lectura de la sesión ni ninguna operación del usuario autenticado.
- * Reservado para tareas de servidor que todavía no están implementadas.
+ * Se usa para datos que el usuario no puede cambiar, como el rol.
  */
 export function createAdminClient() {
   const env = getPublicSupabaseEnv();

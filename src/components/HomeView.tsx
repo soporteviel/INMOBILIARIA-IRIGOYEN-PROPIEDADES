@@ -5,14 +5,24 @@ import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
 import { Valuation } from "@/components/Valuation";
+import { emptyPropertyFilterOptions, getPropertyFilterOptions } from "@/data/properties";
+import { getPublishedCatalog } from "@/lib/properties/public-catalog";
 
-export function HomeView({ variant = "overlay" }: { variant?: "solid" | "overlay" }) {
+export async function HomeView() {
+  const catalog = await getPublishedCatalog();
+  const options = catalog.ok ? getPropertyFilterOptions(catalog.properties) : emptyPropertyFilterOptions();
+  const featured = catalog.ok ? catalog.properties.filter((property) => property.featured) : [];
+
   return (
     <>
-      <Header variant={variant} homePath={variant === "solid" ? "/opcion-2" : "/"} />
+      <Header variant="overlay" />
       <main id="contenido">
-        <Hero underHeader={variant === "overlay"} />
-        <FeaturedProperties />
+        <Hero underHeader searchOptions={options} />
+        <FeaturedProperties
+          properties={featured}
+          error={catalog.ok ? null : catalog.message}
+          photosUnavailable={catalog.ok && catalog.photosUnavailable}
+        />
         <Valuation />
         <About />
         <Contact />
