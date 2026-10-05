@@ -135,9 +135,8 @@ export const PropertyPhotos = forwardRef<
   {
     propertyId: string | null;
     onChange: (summary: PhotoSummary) => void;
-    onPrepareProperty?: () => Promise<string | null>;
   }
->(function PropertyPhotos({ propertyId, onChange, onPrepareProperty }, ref) {
+>(function PropertyPhotos({ propertyId, onChange }, ref) {
   const { modal } = App.useApp();
   const committedRef = useRef<PhotoDraft>(emptyDraft());
   const baselineRef = useRef({ order: "", coverId: "" });
@@ -148,6 +147,7 @@ export const PropertyPhotos = forwardRef<
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const loadRef = useRef<PhotoSummary["load"]>("idle");
+  const uploadingRef = useRef(false);
   const uploadRef = useRef<PropertyPhotosHandle["uploadCommitted"] | null>(null);
   const tailRef = useRef(Promise.resolve());
   const [reloadToken, setReloadToken] = useState(0);
@@ -248,20 +248,45 @@ export const PropertyPhotos = forwardRef<
             error: photo.status === "pending" ? "Esta foto quedó sin terminar. Volvé a elegir el archivo para reintentar." : undefined,
             progress: photo.status === "ready" ? 100 : 0,
           }));
-        const cover = photos.find((photo) => photo.isCover)?.id ?? null;
-        const next = { items, coverKey: cover, pendingDeletes: [] as string[] };
         loadRef.current = "ready";
         devTiming("fotos", "solicitud-fin", started, `200 ${items.length}`);
         devEvent("fotos-estado", "ready");
         if (committedRef.current.items.some((item) => item.ownedUrl) || committedRef.current.pendingDeletes.length > 0) {
+          const known = new Set(
+            committedRef.current.items.flatMap((item) =>
+              [item.key, item.serverId, item.reservedId].filter((value): value is string => Boolean(value)),
+            ),
+          );
+          const missing = items.filter(
+            (item) => !known.has(item.key) && !known.has(item.serverId ?? "") && !known.has(item.reservedId ?? ""),
+          );
+          if (missing.length > 0) {
+            remember({ ...cloneDraft(committedRef.current), items: [...committedRef.current.items, ...missing] }, null);
+            return;
+          }
           onChange(summaryOf(committedRef.current, null));
           return;
         }
+        const kept: PhotoItem[] = [];
+        for (const item of items) {
+          if (!item.reservedId || !propertyId) {
+            kept.push(item);
+            continue;
+          }
+          const released = await fetch(`/api/admin/propiedades/${propertyId}/fotos/${item.reservedId}`, { method: "DELETE" });
+          if (!released.ok && released.status !== 502) {
+            kept.push(item);
+          }
+        }
+        if (!active) {
+          return;
+        }
+        const cover = photos.find((photo) => photo.isCover && kept.some((item) => item.serverId === photo.id))?.id ?? null;
         baselineRef.current = {
-          order: items.flatMap((item) => (item.serverId ? [item.serverId] : [])).join(","),
+          order: kept.flatMap((item) => (item.serverId ? [item.serverId] : [])).join(","),
           coverId: cover ?? "",
         };
-        remember(next, null);
+        remember({ items: kept, coverKey: cover, pendingDeletes: [] }, null);
       })
       .catch((error: unknown) => {
         if (!active) {
@@ -294,6 +319,31 @@ export const PropertyPhotos = forwardRef<
     return summaryOf(source).pending;
   }
 
+  function knownPhotoIds() {
+    return committedRef.current.items.flatMap((item) => {
+      const id = item.serverId ?? item.reservedId;
+      return id ? [id] : [];
+    });
+  }
+
+  async function idsInClientOrder(targetPropertyId: string) {
+    const known = knownPhotoIds();
+    const response = await fetch(`/api/admin/propiedades/${targetPropertyId}/fotos`);
+    if (!response.ok) {
+      return { known, ids: known };
+    }
+    const body = (await response.json().catch(() => null)) as { photos?: { id?: string; status?: string }[] } | null;
+    const remote = Array.isArray(body?.photos) ? body.photos : [];
+    const seen = new Set(known);
+    const extras = remote.flatMap((photo) => {
+      if (!photo.id || seen.has(photo.id) || (photo.status !== "ready" && photo.status !== "pending")) {
+        return [];
+      }
+      return [photo.id];
+    });
+    return { known, ids: [...known, ...extras] };
+  }
+
   async function uploadOne(targetPropertyId: string, item: PhotoItem, patch: (next: Partial<PhotoItem>) => void) {
     if (!item.file) {
       patch({ phase: "error", error: "Elegí de nuevo el archivo para reintentar." });
@@ -305,12 +355,13 @@ export const PropertyPhotos = forwardRef<
       return;
     }
     patch({ phase: "uploading", error: undefined, invalid: false, progress: 0 });
+    let reservedPhotoId = item.reservedId;
     try {
       const fitted = await fitPhotoFile(item.file);
       const file = fitted.file;
       const prepared = file.type === "image/webp" && fitted.width > 0 && fitted.height > 0;
-      const reservePath = item.reservedId
-        ? `/api/admin/propiedades/${targetPropertyId}/fotos/${item.reservedId}/reintentar`
+      const reservePath = reservedPhotoId
+        ? `/api/admin/propiedades/${targetPropertyId}/fotos/${reservedPhotoId}/reintentar`
         : `/api/admin/propiedades/${targetPropertyId}/fotos`;
       const reserved = await fetch(reservePath, {
         method: "POST",
@@ -319,13 +370,14 @@ export const PropertyPhotos = forwardRef<
       });
       if (!reserved.ok) {
         const text = await readError(reserved);
-        if (item.reservedId && text.includes("ya está lista")) {
-          patch({ phase: "ready", serverId: item.reservedId, progress: 100, error: undefined });
+        if (reservedPhotoId && text.includes("ya está lista")) {
+          patch({ phase: "ready", serverId: reservedPhotoId, progress: 100, error: undefined });
           return;
         }
         throw new Error(text);
       }
       const ticket = (await reserved.json()) as { photoId: string; uploadUrl: string; contentType: string };
+      reservedPhotoId = ticket.photoId;
       patch({ reservedId: ticket.photoId, progress: 5 });
       const uploadStarted = performance.now();
       await putFile(ticket.uploadUrl, file, ticket.contentType, (progress) => {
@@ -345,10 +397,19 @@ export const PropertyPhotos = forwardRef<
       }
       patch({ phase: "ready", serverId: ticket.photoId, reservedId: ticket.photoId, progress: 100, error: undefined, invalid: false });
     } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudo subir la foto.";
+      if (reservedPhotoId) {
+        const released = await fetch(`/api/admin/propiedades/${targetPropertyId}/fotos/${reservedPhotoId}`, { method: "DELETE" });
+        if (released.ok || released.status === 502) {
+          patch({ phase: "error", progress: 0, error: message, reservedId: undefined, serverId: undefined });
+          return;
+        }
+      }
       patch({
         phase: "error",
         progress: 0,
-        error: error instanceof Error ? error.message : "No se pudo subir la foto.",
+        error: message,
+        reservedId: reservedPhotoId,
       });
     }
   }
@@ -363,12 +424,17 @@ export const PropertyPhotos = forwardRef<
     summary: () => summaryOf(committedRef.current),
     reload: () => setReloadToken((value) => value + 1),
     open: (returnFocus) => {
+      if (uploadingRef.current || (propertyId && loadRef.current !== "ready")) {
+        return;
+      }
       returnFocusRef.current = returnFocus ?? null;
       createdUrls.current = new Set();
       setMessage(null);
       setDraft(cloneDraft(committedRef.current));
     },
     uploadCommitted: async (targetPropertyId, onProgress, options) => {
+      uploadingRef.current = true;
+      try {
       const source = committedRef.current;
       const deletes = options?.filesOnly ? [] : [...source.pendingDeletes];
       for (const photoId of deletes) {
@@ -441,16 +507,16 @@ export const PropertyPhotos = forwardRef<
           message: `${pendingLeft} ${pendingLeft === 1 ? "foto sigue pendiente" : "fotos siguen pendientes"}. ${detail}`,
         };
       }
-      const ids = committedRef.current.items.flatMap((item) => (item.serverId ? [item.serverId] : []));
+      const listed = await idsInClientOrder(targetPropertyId);
       const cover = committedRef.current.items.find((item) => item.key === committedRef.current.coverKey && item.serverId);
-      const nextOrder = ids.join(",");
+      const nextOrder = listed.known.join(",");
       const nextCover = cover?.serverId ?? "";
       const placementPending = options?.filesOnly && committedRef.current.pendingDeletes.length > 0;
-      if (!placementPending && ids.length > 0 && nextOrder !== baselineRef.current.order) {
+      if (!placementPending && listed.ids.length > 0 && (nextOrder !== baselineRef.current.order || listed.ids.length !== listed.known.length)) {
         const ordered = await fetch(`/api/admin/propiedades/${targetPropertyId}/fotos/orden`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ids }),
+          body: JSON.stringify({ ids: listed.ids }),
         });
         if (!ordered.ok) {
           await refreshPublicView();
@@ -478,6 +544,9 @@ export const PropertyPhotos = forwardRef<
         remember({ ...committedRef.current, pendingDeletes: [] });
       }
       return { ok: true as const };
+      } finally {
+        uploadingRef.current = false;
+      }
     },
   };
     uploadRef.current = api.uploadCommitted;
@@ -617,7 +686,7 @@ export const PropertyPhotos = forwardRef<
   }
 
   function applyDraft() {
-    if (!draft) {
+    if (!draft || uploadingRef.current) {
       return;
     }
     const kept = new Set(draft.items.map((item) => item.previewUrl));
@@ -631,25 +700,6 @@ export const PropertyPhotos = forwardRef<
     remember(next, null);
     setDraft(null);
     setMessage(null);
-    const hasNew = next.items.some((item) => item.phase !== "ready" && item.file && !item.invalid);
-    void (async () => {
-      let id = propertyId;
-      if (!id && hasNew) {
-        id = (await onPrepareProperty?.()) ?? null;
-      }
-      if (!id) {
-        if (hasNew) {
-          onChange(
-            summaryOf(
-              committedRef.current,
-              "Escribí el título para subir las fotos ahora. Si no, se suben al guardar.",
-            ),
-          );
-        }
-        return;
-      }
-      void enqueueUpload(id, () => {}, { filesOnly: true });
-    })();
   }
 
   const editing = draft !== null;
@@ -678,7 +728,7 @@ export const PropertyPhotos = forwardRef<
         <div>
           <div className="flex items-end justify-between gap-3">
             <p className="text-sm text-[#5c5854]">
-              JPEG, PNG o WebP. Hasta 15 MB. Arrastrá para ordenar. La estrella elige la portada. Al aplicar, las fotos nuevas empiezan a subirse.
+              JPEG, PNG o WebP. Hasta 15 MB. Arrastrá para ordenar. La estrella elige la portada. Las fotos nuevas se suben al guardar la propiedad.
             </p>
             <p className="shrink-0 text-sm text-[#2a2a2a]">
               {draft.items.length}/{MAX_PROPERTY_PHOTOS}

@@ -398,7 +398,7 @@ export function PropertyForm({
   const submittingRef = useRef(false);
   const bypassLeaveRef = useRef(false);
   const draftIdRef = useRef<string | null>(property?.id ?? null);
-  const [photoPropertyId, setPhotoPropertyId] = useState<string | null>(property?.id ?? null);
+  const photoPropertyId = property?.id ?? null;
   const photosRef = useRef<PropertyPhotosHandle>(null);
   const [photoSummary, setPhotoSummary] = useState<PhotoSummary>({
     total: 0,
@@ -475,29 +475,6 @@ export function PropertyForm({
       submittingRef.current = false;
       setFormError("La propiedad ya quedó guardada. No se pudo abrir el listado.");
     }
-  }
-
-  async function preparePhotoProperty() {
-    const existing = property?.id ?? draftIdRef.current;
-    if (existing) {
-      return existing;
-    }
-    const title = String(form.getFieldValue("title") ?? "").trim();
-    if (!title) {
-      return null;
-    }
-    const result = await postSave({
-      id: null,
-      intent: "save",
-      values: toInput(form.getFieldsValue()),
-    });
-    if (!result.ok) {
-      return null;
-    }
-    draftIdRef.current = result.id;
-    setPhotoPropertyId(result.id);
-    window.sessionStorage.setItem(NEW_PROPERTY_DRAFT_KEY, result.id);
-    return result.id;
   }
 
   function unlock() {
@@ -957,6 +934,7 @@ export function PropertyForm({
               </div>
               <Button
                 htmlType="button"
+                disabled={busy || (Boolean(photoPropertyId) && photoSummary.load !== "ready")}
                 onClick={(event) => photosRef.current?.open(event.currentTarget)}
               >
                 Administrar fotos
@@ -1043,7 +1021,6 @@ export function PropertyForm({
         ref={photosRef}
         propertyId={photoPropertyId}
         onChange={setPhotoSummary}
-        onPrepareProperty={preparePhotoProperty}
       />
 
       <Modal

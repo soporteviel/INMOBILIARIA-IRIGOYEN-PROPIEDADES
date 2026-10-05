@@ -68,10 +68,7 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
   const priceLabel = formatPublicPrice(property, "detail");
   const url = await propertyUrl(property.slug);
   const whatsappHref = whatsappLink(`Hola, quiero consultar por ${property.title}. ${url}`);
-  const paragraphs = property.description
-    ?.split(/\n\n+/)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean);
+  const description = property.description?.trim() ? property.description : "";
   const others = catalog.properties.filter((item) => item.slug !== property.slug).slice(0, 3);
   const precisionLabel =
     property.locationPrecision === "approximate"
@@ -127,12 +124,10 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
             <div className="min-w-0 lg:col-span-2">
               <PropertyFacts property={property} />
 
-              {paragraphs && paragraphs.length > 0 ? (
-                <div className="mt-8 max-w-2xl space-y-4 text-base leading-relaxed text-tinta">
-                  {paragraphs.map((paragraph) => (
-                    <p key={paragraph}>{paragraph}</p>
-                  ))}
-                </div>
+              {description ? (
+                <p className="mt-8 max-w-2xl whitespace-pre-wrap text-base leading-relaxed text-tinta">
+                  {description}
+                </p>
               ) : null}
 
               {property.features && property.features.length > 0 ? (

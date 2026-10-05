@@ -52,7 +52,6 @@ function gridClass(total: number) {
   return "grid-cols-4 grid-rows-2";
 }
 
-const MOBILE_SIZES = "(min-width: 640px) calc(100vw - 4rem), calc(100vw - 2.5rem)";
 const LIGHTBOX_SIZES = "100vw";
 const THUMB_SIZES = "96px";
 
@@ -80,10 +79,12 @@ function OptimizedPreload({
   src,
   sizes,
   media,
+  fetchPriority = "auto",
 }: {
   src: string;
   sizes: string;
   media?: string;
+  fetchPriority?: "high" | "low" | "auto";
 }) {
   const { props } = getImageProps({ alt: "", src, fill: true, sizes });
   return (
@@ -91,6 +92,7 @@ function OptimizedPreload({
       rel="preload"
       as="image"
       media={media}
+      fetchPriority={fetchPriority}
       imageSrcSet={props.srcSet}
       imageSizes={props.sizes}
       href={props.srcSet ? undefined : props.src}
@@ -305,16 +307,25 @@ function PropertyGalleryView({ photos }: { photos: PropertyPhoto[] }) {
   }
 
   const current = photos[index] ?? photos[0];
-  const nextPhoto = total > 1 ? photos[(index + 1) % total] : null;
   const first = photos[0];
 
   return (
     <>
+      {photos.map((photo, photoIndex) => (
+        <OptimizedPreload
+          key={photo.id}
+          src={photo.src}
+          sizes={LIGHTBOX_SIZES}
+          fetchPriority={photoIndex === 0 ? "high" : "low"}
+        />
+      ))}
       {first ? (
-        <>
-          <OptimizedPreload src={first.src} sizes={gridSizes(visible.length, 0)} media="(min-width: 1024px)" />
-          <OptimizedPreload src={first.src} sizes={MOBILE_SIZES} media="(max-width: 1023px)" />
-        </>
+        <OptimizedPreload
+          src={first.src}
+          sizes={gridSizes(visible.length, 0)}
+          media="(min-width: 1024px)"
+          fetchPriority="high"
+        />
       ) : null}
       <div className={`hidden h-[clamp(420px,42vw,520px)] gap-2 lg:grid ${gridClass(visible.length)}`}>
         {visible.map((photo, photoIndex) => {
@@ -374,8 +385,8 @@ function PropertyGalleryView({ photos }: { photos: PropertyPhoto[] }) {
                   src={photo.src}
                   alt={photo.alt}
                   fill
-                  loading="lazy"
-                  sizes={MOBILE_SIZES}
+                  loading="eager"
+                  sizes={LIGHTBOX_SIZES}
                   className="object-cover"
                 />
               </button>
@@ -437,7 +448,6 @@ function PropertyGalleryView({ photos }: { photos: PropertyPhoto[] }) {
             onPointerDown={onLightboxPointerDown}
             onPointerUp={onLightboxPointerUp}
           >
-            {nextPhoto ? <OptimizedPreload src={nextPhoto.src} sizes={LIGHTBOX_SIZES} /> : null}
             <Image
               src={current.src}
               alt={current.alt}
