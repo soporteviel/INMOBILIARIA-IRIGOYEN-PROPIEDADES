@@ -88,7 +88,7 @@ function orderedRange(min: number | null, max: number | null) {
 }
 
 function comparableSurface(property: Property) {
-  if (property.type === "Lote" || property.type === "Terreno") {
+  if (property.type === "Lote/Terreno" || property.type === "Campo" || property.type === "Lote" || property.type === "Terreno") {
     return property.landAreaM2;
   }
   return property.coveredAreaM2;

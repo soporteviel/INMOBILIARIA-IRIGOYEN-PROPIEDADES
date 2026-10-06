@@ -8,7 +8,7 @@ import { site } from "@/config/site";
 
 export function propertyFacts(property: Property) {
   const facts: { label: string; value: string }[] = [];
-  const isLot = property.type === "Lote" || property.type === "Terreno";
+  const isLot = property.type === "Lote/Terreno" || property.type === "Campo" || property.type === "Lote" || property.type === "Terreno";
 
   function known(value: number | null | undefined) {
     return value !== null && value !== undefined;

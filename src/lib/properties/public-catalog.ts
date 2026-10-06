@@ -84,7 +84,7 @@ function publicPhotoPath(photoId: string) {
 }
 
 function cardArea(type: string, covered: number | null, land: number | null) {
-  const value = type === "Lote" || type === "Terreno" ? land : covered;
+  const value = type === "Lote/Terreno" || type === "Campo" || type === "Lote" || type === "Terreno" ? land : covered;
   if (value === null) {
     return "—";
   }

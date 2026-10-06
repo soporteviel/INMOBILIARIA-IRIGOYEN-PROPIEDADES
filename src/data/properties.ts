@@ -68,7 +68,7 @@ export function formatPublicPrice(
   return money;
 }
 
-const TYPES_WITH_LAND_AREA = new Set(["Lote", "Terreno"]);
+const TYPES_WITH_LAND_AREA = new Set(["Lote/Terreno", "Campo", "Lote", "Terreno"]);
 
 export function cardSurface(property: Pick<Property, "type" | "coveredAreaM2" | "landAreaM2">) {
   const value = TYPES_WITH_LAND_AREA.has(property.type) ? property.landAreaM2 : property.coveredAreaM2;

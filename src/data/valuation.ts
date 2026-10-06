@@ -10,8 +10,8 @@ export const valuationPropertyTypes = [
   { value: "local", label: "Local" },
   { value: "oficina", label: "Oficina" },
   { value: "cochera", label: "Cochera" },
-  { value: "lote", label: "Lote" },
-  { value: "terreno", label: "Terreno" },
+  { value: "lote-terreno", label: "Lote/Terreno" },
+  { value: "campo", label: "Campo" },
 ] as const;
 
 export const valuationRooms = [
