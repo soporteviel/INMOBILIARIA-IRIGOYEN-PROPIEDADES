@@ -96,9 +96,25 @@ export function Footer() {
         </div>
 
         <div className="mt-12 flex flex-col gap-4 border-t border-linea pt-6 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-muted">
-            © {year} {site.name}
-          </p>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
+            <p className="text-xs text-muted">
+              © {year} {site.name}
+            </p>
+            <a
+              href={site.afip.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex"
+            >
+              {/* El sello lo publica AFIP. No pasa por el optimizador de imágenes. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={site.afip.image}
+                alt={site.afip.label}
+                className="h-12 w-auto"
+              />
+            </a>
+          </div>
           <a
             href={site.developer.url}
             target="_blank"

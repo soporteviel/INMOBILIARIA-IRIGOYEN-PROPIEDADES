@@ -48,6 +48,15 @@ export const site = {
     url: "https://viel.ar",
     logo: "/brand/viel-mark.png",
   },
+  /**
+   * Formulario 960. El código qr lo emitió AFIP para esta contribuyente.
+   * La imagen se pide por HTTPS para que el sello cargue en el sitio público.
+   */
+  afip: {
+    href: "https://serviciosweb.afip.gob.ar/clavefiscal/qr/response.aspx?qr=TNexOQjKzkWWH5Vor6YIsA,,",
+    image: "https://www.afip.gob.ar/images/f960/DATAWEB.jpg",
+    label: "Data Fiscal AFIP",
+  },
 } as const;
 
 export function isConfigured(value: string | undefined | null): value is string {
