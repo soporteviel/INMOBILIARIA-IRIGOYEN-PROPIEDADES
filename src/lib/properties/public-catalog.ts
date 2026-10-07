@@ -195,7 +195,9 @@ async function loadReadyPhotos() {
   );
 }
 
-const readCachedRows = unstable_cache(loadPropertyRows, ["public-properties-v1"], {
+// La clave cambió para no reutilizar el catálogo guardado antes de vaciar la base.
+// El tag sigue siendo el que invalida el admin al guardar, pausar o borrar.
+const readCachedRows = unstable_cache(loadPropertyRows, ["public-properties-v2"], {
   tags: [PUBLIC_CATALOG_TAG],
   revalidate: false,
 });
