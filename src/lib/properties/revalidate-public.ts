@@ -33,6 +33,7 @@ export async function revalidatePublicViews(input: {
   revalidateTag(PUBLIC_CATALOG_TAG, { expire: 0 });
   revalidatePath("/");
   revalidatePath("/propiedades");
+  revalidatePath("/sitemap.xml");
   const slugs = new Set(
     [slug, input.previousSlug ?? null].filter((value): value is string => Boolean(value)),
   );
