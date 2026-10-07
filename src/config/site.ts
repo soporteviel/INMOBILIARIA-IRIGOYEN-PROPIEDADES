@@ -9,7 +9,7 @@ export const site = {
   profession: "Martillera y Corredora Pública",
   license: "Mat. 7.813 CMCPDJLP",
   description:
-    "Acompañamos operaciones de compra, venta y alquiler con una atención cercana y clara.",
+    "Noelia Irigoyen Propiedades brinda un servicio inmobiliario profesional y personalizado, orientado a acompañar a sus clientes en cada etapa de los procesos de compra, venta y alquiler.",
   logo: {
     src: "/brand/logo.png",
     alt: "Noelia Irigoyen Propiedades",
